@@ -4,6 +4,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.95.0';
 const PROJECT_URL='https://ziuvbhwurlplpgjvnwwu.supabase.co';
 const PUBLISHABLE_KEY='sb_publishable_DwjlTvNC2g6302A5T_8Z5Q_yGqANv_-';
 const API=PROJECT_URL+'/functions/v1/iihq-mobile?action=dashboard';
+const ALPACA_API=PROJECT_URL+'/functions/v1/iihq-alpaca-read?action=';
 const client=createClient(PROJECT_URL,PUBLISHABLE_KEY,{auth:{persistSession:true,storage:window.sessionStorage,autoRefreshToken:true,detectSessionInUrl:true}});
 const $=id=>document.getElementById(id);
 
@@ -26,6 +27,7 @@ function setSymbol(s){
  $('researchSymbol').textContent=s;
  $('secLink').href='https://www.sec.gov/edgar/search/#/q='+encodeURIComponent(s);
  renderWatch();
+ if(ownerApproved) loadMarketData().catch(()=>{});
 }
 function renderWatch(){
  $('watchCount').textContent=String(watchlist.length).padStart(2,'0')+' SYMBOLS';
@@ -106,7 +108,8 @@ async function refreshDesk(token){
    $('paperMessage').textContent='Owner verified. The Alpaca paper account has not yet been linked and virtual balance has not been retrieved.';
    $('orderBlotter').textContent=(data.events?.length??0)+' recent internal event(s) available in database. No verified brokerage orders have been connected.';
    $('riskDetails').textContent='Private database connection verified. The order executor is not deployed and live-money trading is unsupported.';
-   note('Private owner access verified. Trading remains unavailable in this version.');
+   note('Private owner access verified. No trade execution is enabled.');
+   await refreshAlpaca();
  }catch(_){
    note('Could not load private data service. Check the connection and try again.',true);
  }
@@ -130,3 +133,130 @@ $('paperRefresh').addEventListener('click',syncAuth);
 $('refresh').addEventListener('click',syncAuth);
 client.auth.onAuthStateChange(()=>{setTimeout(()=>syncAuth().catch(()=>note('Authentication status could not be refreshed.',true)),0)});
 syncAuth().catch(()=>note('Sign-in service not available.',true));
+
+
+// READ-ONLY Alpaca PAPER provider bridge. Never writes orders, even from private account.
+let marketRequestId=0;
+const currency=v=>Number.isFinite(Number(v))?new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(Number(v)):'—';
+function clearNode(el){el.replaceChildren();}
+function buildRow(left,right){
+  const row=document.createElement('div');row.className='line';
+  const label=document.createElement('span');label.textContent=left;
+  const value=document.createElement('b');value.textContent=right;
+  row.append(label,value);return row;
+}
+async function alpacaGet(action,session,params=''){
+  const response=await fetch(ALPACA_API+encodeURIComponent(action)+params,{
+    method:'GET',cache:'no-store',headers:{Authorization:'Bearer '+session.access_token}});
+  const payload=await response.json();
+  if(!response.ok){
+    const error=new Error(payload.error||'DATA_UNAVAILABLE');
+    error.code=payload.error;error.status=response.status;error.details=payload;
+    throw error;
+  }
+  return payload;
+}
+async function refreshAlpaca(){
+  const {data:{session}}=await client.auth.getSession();if(!session||!ownerApproved)return;
+  const tasks=await Promise.allSettled([
+    alpacaGet('account',session),alpacaGet('positions',session),alpacaGet('orders',session)
+  ]);
+  const account=tasks[0],positions=tasks[1],orders=tasks[2];
+  if(account.status!=='fulfilled'){
+    const error=account.reason;
+    $('paperEquity').textContent='PAPER LINK PENDING';
+    $('paperMessage').textContent=error.code==='ALPACA_PAPER_CREDENTIALS_MISSING'
+      ?'Server-side paper credentials are incomplete. Add Alpaca_key and Alpaca_secret to the investing Supabase Edge Function secrets.'
+      :error.code==='ALPACA_CREDENTIALS_REJECTED'?'Alpaca rejected the paper key pair. Check that the credentials came from PAPER trading and match one another.'
+      :error.code==='ALPACA_RATE_LIMITED'?'Alpaca free data limit reached. Try again later.'
+      :'The Alpaca paper service has not returned verified account data.';
+    $('feedBadge').textContent='PAPER FEED PENDING';
+    return;
+  }
+  const item=account.value.account||{};
+  $('paperEquity').textContent=currency(item.equity);
+  $('paperMessage').textContent='ALPACA PAPER · VERIFIED '+new Date(account.value.fetched_at).toLocaleString('en-GB')+
+    ' · CASH '+currency(item.cash)+' · BUYING POWER '+currency(item.buying_power);
+  if(positions.status==='fulfilled'){
+    const target=$('positionBlotter');clearNode(target);
+    const data=positions.value.positions||[];
+    if(!data.length)target.textContent='No open paper positions.';
+    for(const p of data.slice(0,15))target.append(buildRow(String(p.symbol)+' · '+String(p.qty??'—')+' shares',
+      currency(p.market_value)+' / P&L '+currency(p.unrealized_pl)));
+  }
+  if(orders.status==='fulfilled'){
+    const target=$('orderBlotter');clearNode(target);
+    const data=orders.value.orders||[];
+    if(!data.length)target.textContent='No paper orders recorded yet.';
+    for(const o of data.slice(0,12))target.append(buildRow(
+      String(o.symbol)+' · '+String(o.side).toUpperCase()+' '+String(o.qty??''),
+      String(o.status).toUpperCase()));
+  }
+  await loadMarketData();
+}
+async function loadMarketData(){
+  if(!ownerApproved)return;
+  const request=++marketRequestId;
+  const {data:{session}}=await client.auth.getSession();if(!session)return;
+  const syms=[selected,...watchlist.filter(s=>s!==selected)].slice(0,10);
+  try{
+    const [snapshot,bars]=await Promise.all([
+      alpacaGet('market',session,'&symbols='+encodeURIComponent(syms.join(','))),
+      alpacaGet('bars',session,'&symbol='+encodeURIComponent(selected))
+    ]);
+    if(request!==marketRequestId)return;
+    $('feedBadge').textContent='IEX VERIFIED DATA';
+    const items=snapshot.snapshots||{};
+    const stocks=$('watchStocks').querySelectorAll('.price');
+    const ribbon=$('tickerbar').querySelectorAll('.ticker');
+    for(let i=0;i<watchlist.length;i++){
+      const q=items[watchlist[i]];
+      const val=q?.trade??q?.day_close;
+      if(i<stocks.length)stocks[i].textContent=val==null?'—':currency(val);
+      if(i<ribbon.length){const piece=ribbon[i].querySelector('span');
+        const tag=ribbon[i].querySelector('em');
+        if(piece)piece.textContent=val==null?'—':currency(val);
+        if(tag)tag.textContent=val==null?'NO IEX TRADE':'IEX';
+      }
+    }
+    const quote=items[selected];
+    const price=quote?.trade??quote?.day_close;
+    document.querySelector('.instrument .pricebig').textContent=price==null?'— USD':currency(price);
+    const stamp=quote?.trade_time||quote?.quote_time||snapshot.fetched_at;
+    $('quoteSource').textContent='IEX (one US venue) · last observed '+new Date(stamp).toLocaleString('en-GB')+
+      ' · May be stale outside trading hours · Not full consolidated US tape.';
+    const dayChange=quote?.day_close!=null&&quote?.prev_close>0?(quote.day_close/quote.prev_close-1)*100:null;
+    const metrics=document.querySelectorAll('.instrument .metric .v');
+    if(metrics[0])metrics[0].textContent=dayChange==null?'—':dayChange.toFixed(2)+'% (IEX)';
+    if(metrics[1])metrics[1].textContent=quote?.day_volume==null?'—':Number(quote.day_volume).toLocaleString('en-GB');
+    if(metrics[2])metrics[2].textContent='—';
+    drawBars(bars.bars||[],bars.symbol);
+  }catch(_){
+    if(request!==marketRequestId)return;
+    $('feedBadge').textContent='IEX FEED UNAVAILABLE';
+    $('quoteSource').textContent='IEX market quotes are currently unavailable. No prices are simulated.';
+    document.querySelector('.instrument .pricebig').textContent='— USD';
+    drawBars([],selected);
+  }
+}
+function drawBars(bars,symbol){
+  const chart=$('priceChart');clearNode(chart);
+  const good=bars.filter(b=>Number.isFinite(Number(b.c))&&b.c>0&&b.t).slice(-100);
+  if(good.length<2){const t=document.createElement('div');t.textContent='No verified five-minute IEX bars available for this period.';t.className='muted m12';chart.append(t);return}
+  const values=good.map(b=>Number(b.c)),lo=Math.min(...values),hi=Math.max(...values);
+  const range=Math.max(hi-lo,hi*0.002,0.001);
+  const width=620,height=220,points=values.map((v,i)=>{
+    const x=20+i/(values.length-1)*(width-40),y=height-18-((v-lo)/range)*(height-36);
+    return x.toFixed(1)+','+y.toFixed(1);
+  }).join(' ');
+  const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');
+  svg.setAttribute('viewBox','0 0 '+width+' '+height);svg.setAttribute('role','img');
+  svg.setAttribute('aria-label',symbol+' recent five minute IEX price bars');
+  svg.style.width='100%';svg.style.height='100%';
+  const line=document.createElementNS(ns,'polyline');
+  line.setAttribute('fill','none');line.setAttribute('stroke','#87e4b5');
+  line.setAttribute('stroke-width','2.6');line.setAttribute('stroke-linecap','round');line.setAttribute('stroke-linejoin','round');
+  line.setAttribute('points',points);svg.append(line);chart.append(svg);
+  const info=document.createElement('small');info.textContent='IEX 5-minute bars · Last sample '+new Date(good.at(-1).t).toLocaleString('en-GB');
+  info.style.position='absolute';info.style.left='12px';info.style.bottom='5px';info.style.background='#10191bcc';chart.append(info);
+}
