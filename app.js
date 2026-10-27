@@ -28,6 +28,10 @@ function setSymbol(s){
  $('researchSymbol').textContent=s;
  $('strategyTicker').textContent=s;
  $('backtestSymbol').textContent=s;
+ $('riskTicker').textContent=s;
+ $('riskVerdict').textContent='NO TRADE · NOT CHECKED';
+ $('riskSummary').textContent='Run the data-quality checks for '+s+'; no trading can occur.';
+ $('riskCheckList').textContent='Awaiting market-readiness data for '+s+'.';
  $('backtestStatus').textContent='Historical result not run for '+s+'. Select a lookback and run the test.';
  for(const id of ['btTrainReturn','btTestReturn','btTestTrades','btTestDD','btTestWin','btTestPF'])$(id).textContent='—';
  $('btCoverage').textContent='Awaiting historical data for '+s+'.';
@@ -71,6 +75,7 @@ for(const button of $('nav').querySelectorAll('button')){
    for(const key of Object.keys(TABS))$('view-'+key).classList.toggle('hidden',key!==tab);
    $('viewTitle').textContent=TABS[tab];
    if(tab==='strategies'&&ownerApproved)refreshSavedScans().catch(()=>{});
+   if(tab==='risk'&&ownerApproved)refreshReadiness().catch(()=>{});
  });
 }
 function updateClocks(){
@@ -457,7 +462,7 @@ async function runBacktest(){
    $('btTrainReturn').textContent=btFmtPct(train.net_return_pct);
    $('btTestReturn').textContent=btFmtPct(oos.net_return_pct);
    $('btTestTrades').textContent=String(oos.trade_count);
-   $('btTestDD').textContent=btFmtPct(oos.max_drawdown_pct);
+   $('btTestDD').textContent=Number.isFinite(oos.max_drawdown_pct)?Number(oos.max_drawdown_pct).toFixed(2)+'%':'—';
    $('btTestWin').textContent=btFmtPct(oos.win_rate_pct);
    $('btTestPF').textContent=btPF(oos.profit_factor);
    const sufficient=oos.sample_sufficient===true;
@@ -489,3 +494,54 @@ async function runBacktest(){
  }finally{if(pendingBacktest===id)$('runBacktest').disabled=false}
 }
 $('runBacktest').addEventListener('click',()=>runBacktest().catch(()=>{}));
+
+
+// Multi-source readiness checklist. GET only; cannot return permission to place an order.
+let riskRequestId=0;
+async function refreshReadiness(){
+ if(!ownerApproved){
+   $('riskVerdict').textContent='NO TRADE · OWNER ACCESS REQUIRED';
+   $('riskSummary').textContent='Sign in to inspect private Alpaca paper-data quality checks.';
+   overlay(true);return;
+ }
+ const {data:{session}}=await client.auth.getSession();
+ if(!session)return;
+ const symbol=selected,id=++riskRequestId;
+ $('riskVerdict').textContent='NO TRADE · CHECKING';
+ $('riskSummary').textContent='Reading Alpaca PAPER account, clock, position, asset and IEX snapshot sources. No orders are sent.';
+ $('refreshRisk').disabled=true;
+ try{
+   const r=await alpacaGet('readiness',session,'&symbol='+encodeURIComponent(symbol));
+   if(riskRequestId!==id||selected!==symbol)return;
+   $('riskVerdict').textContent='NO TRADE · RESEARCH ONLY';
+   $('riskPasses').textContent=String(r.summary?.passed??'—');
+   $('riskBlocks').textContent=String(r.summary?.blocked??'—');
+   $('riskUnknown').textContent=String(r.summary?.unknown??'—');
+   $('riskSummary').textContent='Checked '+new Date(r.assessed_at).toLocaleString('en-GB')+
+     ' · '+r.source_fetched_count+'/'+r.source_requested_count+' independent API requests answered · trade execution disabled.';
+   const zone=$('riskCheckList');zone.replaceChildren();
+   for(const item of r.checks||[]){
+     const block=document.createElement('div');block.className='panel';
+     block.style.padding='12px';block.style.borderRadius='7px';
+     const top=document.createElement('div');top.className='row';
+     const label=document.createElement('b');label.style.fontSize='12px';label.textContent=item.label;
+     const status=document.createElement('b');status.className=item.status==='PASS'?'green':item.status==='BLOCK'?'red':'warning';
+     status.textContent=item.status;
+     top.append(label,status);
+     const details=document.createElement('div');details.className='tiny';
+     details.style.marginTop='6px';details.textContent=item.observation;
+     const provenance=document.createElement('div');provenance.className='muted mono';
+     provenance.style.fontSize='10px';provenance.style.marginTop='7px';provenance.textContent='SOURCE · '+item.source;
+     block.append(top,details,provenance);zone.append(block);
+   }
+   $('riskCaveats').textContent=(r.caveats||[]).join(' ')+' No automatic or manual order functionality is available through this interface.';
+ }catch(_){
+   if(riskRequestId!==id)return;
+   $('riskVerdict').textContent='NO TRADE · DATA UNAVAILABLE';
+   $('riskSummary').textContent='The private assessment could not be completed. Unknown information is a block, not an approval.';
+   $('riskPasses').textContent='—';$('riskBlocks').textContent='—';$('riskUnknown').textContent='—';
+   $('riskCheckList').textContent='No verified market-readiness data has been returned.';
+ }finally{if(riskRequestId===id)$('refreshRisk').disabled=false}
+}
+$('refreshRisk').addEventListener('click',()=>refreshReadiness().catch(()=>{}));
+setInterval(()=>{if(ownerApproved&&!document.hidden&&!$('view-risk').classList.contains('hidden'))refreshReadiness().catch(()=>{})},60000);
