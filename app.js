@@ -205,7 +205,7 @@ async function loadMarketData(){
       alpacaGet('bars',session,'&symbol='+encodeURIComponent(selected))
     ]);
     if(request!==marketRequestId)return;
-    $('feedBadge').textContent='IEX VERIFIED DATA';
+    $('feedBadge').textContent='IEX SOURCE CONNECTED';
     const items=snapshot.snapshots||{};
     const stocks=$('watchStocks').querySelectorAll('.price');
     const ribbon=$('tickerbar').querySelectorAll('.ticker');
@@ -221,9 +221,10 @@ async function loadMarketData(){
     }
     const quote=items[selected];
     const price=quote?.trade??quote?.day_close;
+    if(price==null)$('feedBadge').textContent='IEX NO RECENT PRINT';
     document.querySelector('.instrument .pricebig').textContent=price==null?'— USD':currency(price);
-    const stamp=quote?.trade_time||quote?.quote_time||snapshot.fetched_at;
-    $('quoteSource').textContent='IEX (one US venue) · last observed '+new Date(stamp).toLocaleString('en-GB')+
+    const stamp=quote?.trade_time||quote?.quote_time||null;
+    $('quoteSource').textContent='IEX (one US venue) · last observed '+(stamp?new Date(stamp).toLocaleString('en-GB'):'no timestamp provided')+
       ' · May be stale outside trading hours · Not full consolidated US tape.';
     const dayChange=quote?.day_close!=null&&quote?.prev_close>0?(quote.day_close/quote.prev_close-1)*100:null;
     const metrics=document.querySelectorAll('.instrument .metric .v');
