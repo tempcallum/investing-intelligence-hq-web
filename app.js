@@ -12,6 +12,7 @@ const DEFAULT=['AAPL','MSFT','NVDA','AMZN','META','GOOGL','TSLA','JPM','SPY','QQ
 const NAMES={AAPL:'Apple Inc.',MSFT:'Microsoft Corporation',NVDA:'NVIDIA Corporation',AMZN:'Amazon.com Inc.',META:'Meta Platforms Inc.',GOOGL:'Alphabet Inc.',TSLA:'Tesla Inc.',JPM:'JPMorgan Chase & Co.',SPY:'SPDR S&P 500 ETF',QQQ:'Invesco QQQ Trust',AMD:'Advanced Micro Devices',PLTR:'Palantir Technologies','BRK.B':'Berkshire Hathaway'};
 const TABS={markets:'Market overview',research:'Company intelligence',strategies:'Strategy laboratory',paper:'Paper trading desk',risk:'Risk & audit'};
 let selected='AAPL',signedIn=false,ownerApproved=false;
+const autoScannerMap=new Map();
 function symbols(){
  try{
    const s=JSON.parse(localStorage.getItem('iihq.watchlist.v1')||'null');
@@ -345,7 +346,7 @@ $('scanStrategy').addEventListener('click',()=>scanStrategy().catch(()=>{}));
 
 
 // Read-only server-side automatic scanner status. No orders are submitted.
-const autoScannerMap=new Map();
+
 let lastAutoFetch=0;
 const timeUK=t=>{if(!t)return '—';const d=new Date(t);return Number.isFinite(d.getTime())?d.toLocaleString('en-GB')+' UK/browser time':'—'};
 function displaySavedSignal(r){
