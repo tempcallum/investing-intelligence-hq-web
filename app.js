@@ -25,6 +25,7 @@ function setSymbol(s){
  if(!watchlist.includes(s))return;selected=s;
  $('chosenSymbol').textContent=s;$('chosenName').textContent=NAMES[s]||'Watchlist instrument — details not connected';
  $('researchSymbol').textContent=s;
+ $('instrumentFeedTag').textContent=ownerApproved?'IEX / LOADING':'IEX / LOCKED';
  $('secLink').href='https://www.sec.gov/edgar/search/#/q='+encodeURIComponent(s);
  renderWatch();
  if(ownerApproved) loadMarketData().catch(()=>{});
@@ -80,7 +81,7 @@ async function syncAuth(){
   $('loginForm').classList.toggle('hidden',signedIn);
   $('signedIn').classList.toggle('hidden',!signedIn);
   $('accountOpen').textContent=signedIn?'ACCOUNT / SIGNED IN':'ACCOUNT / LOCKED';
-  if(!session){ownerApproved=false;$('paperEquity').textContent='ACCOUNT LOCKED';$('paperMessage').textContent='Sign in to inspect private trading status. Alpaca is not connected.';return}
+  if(!session){ownerApproved=false;$('instrumentFeedTag').textContent='IEX / LOCKED';$('paperEquity').textContent='ACCOUNT LOCKED';$('paperMessage').textContent='Sign in to inspect private trading status. Alpaca is not connected.';return}
   $('userEmail').textContent=session.user.email||'Authenticated user';
   await refreshDesk(session.access_token);
 }
@@ -206,6 +207,7 @@ async function loadMarketData(){
     ]);
     if(request!==marketRequestId)return;
     $('feedBadge').textContent='IEX SOURCE CONNECTED';
+    $('watchFooter').textContent='Watchlist stored on this device · prices sourced from Alpaca IEX, not the full US market';
     const items=snapshot.snapshots||{};
     const stocks=$('watchStocks').querySelectorAll('.price');
     const ribbon=$('tickerbar').querySelectorAll('.ticker');
@@ -224,6 +226,10 @@ async function loadMarketData(){
     if(price==null)$('feedBadge').textContent='IEX NO RECENT PRINT';
     document.querySelector('.instrument .pricebig').textContent=price==null?'— USD':currency(price);
     const stamp=quote?.trade_time||quote?.quote_time||null;
+    const tradeAgeMin=stamp?(Date.now()-new Date(stamp).getTime())/60000:NaN;
+    const fresh=Number.isFinite(tradeAgeMin)&&tradeAgeMin>=-5&&tradeAgeMin<=15;
+    $('instrumentFeedTag').textContent=price==null?'IEX / NO PRINT':!stamp?'IEX / TIME UNKNOWN':fresh?'IEX / RECENT':'IEX / STALE';
+    if(price!=null&&!fresh)$('feedBadge').textContent='IEX LAST AVAILABLE';
     $('quoteSource').textContent='IEX (one US venue) · last observed '+(stamp?new Date(stamp).toLocaleString('en-GB'):'no timestamp provided')+
       ' · May be stale outside trading hours · Not full consolidated US tape.';
     const dayChange=quote?.day_close!=null&&quote?.prev_close>0?(quote.day_close/quote.prev_close-1)*100:null;
@@ -235,6 +241,8 @@ async function loadMarketData(){
   }catch(_){
     if(request!==marketRequestId)return;
     $('feedBadge').textContent='IEX FEED UNAVAILABLE';
+    $('instrumentFeedTag').textContent='IEX / UNAVAILABLE';
+    $('watchFooter').textContent='Watchlist stored on this device · market-data service unavailable';
     $('quoteSource').textContent='IEX market quotes are currently unavailable. No prices are simulated.';
     document.querySelector('.instrument .pricebig').textContent='— USD';
     drawBars([],selected);
