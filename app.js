@@ -64,7 +64,12 @@ function updateClocks(){
  const now=new Date();
  const london=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',hour:'2-digit',minute:'2-digit',hour12:false}).format(now);
  const ny=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',hour:'2-digit',minute:'2-digit',hour12:false}).format(now);
- $('marketClock').textContent='LONDON '+london+' · NEW YORK '+ny+' · EXCHANGE HOLIDAYS NOT CHECKED';
+ const parts=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',weekday:'short',hour:'2-digit',minute:'2-digit',hour12:false}).formatToParts(now);
+ const part=(type)=>parts.find(p=>p.type===type)?.value||'';
+ const day=part('weekday'),hour=Number(part('hour')),minute=Number(part('minute'));
+ const weekday=['Mon','Tue','Wed','Thu','Fri'].includes(day);
+ const regular=weekday&&(hour*60+minute>=570)&&(hour*60+minute<960);
+ $('marketClock').textContent='LONDON '+london+' · NEW YORK '+ny+' · US CASH SESSION '+(regular?'REGULAR HOURS*':'CLOSED / OUTSIDE REGULAR HOURS')+' · *EXCHANGE HOLIDAYS NOT CHECKED';
 }
 updateClocks();setInterval(updateClocks,60000);
 renderWatch();setSymbol(selected);
@@ -207,6 +212,7 @@ async function loadMarketData(){
     ]);
     if(request!==marketRequestId)return;
     $('feedBadge').textContent='IEX SOURCE CONNECTED';
+    $('feedRefreshAt').textContent='LAST API CHECK '+new Date(snapshot.fetched_at).toLocaleString('en-GB')+' · AUTO UPDATE APPROX. 20 SEC · IEX ONLY';
     $('watchFooter').textContent='Watchlist stored on this device · prices sourced from Alpaca IEX, not the full US market';
     const items=snapshot.snapshots||{};
     const stocks=$('watchStocks').querySelectorAll('.price');
@@ -241,6 +247,7 @@ async function loadMarketData(){
   }catch(_){
     if(request!==marketRequestId)return;
     $('feedBadge').textContent='IEX FEED UNAVAILABLE';
+    $('feedRefreshAt').textContent='MARKET FEED CHECK FAILED · TRY REFRESH IEX';
     $('instrumentFeedTag').textContent='IEX / UNAVAILABLE';
     $('watchFooter').textContent='Watchlist stored on this device · market-data service unavailable';
     $('quoteSource').textContent='IEX market quotes are currently unavailable. No prices are simulated.';
@@ -248,6 +255,21 @@ async function loadMarketData(){
     drawBars([],selected);
   }
 }
+
+// Free Alpaca Basic offers single-exchange IEX data. REST snapshots, not tick streaming.
+const MARKET_REFRESH_MS=20000;
+const marketTabVisible=()=>$('view-markets')&&!$('view-markets').classList.contains('hidden');
+setInterval(()=>{
+ if(ownerApproved&&!document.hidden&&marketTabVisible())loadMarketData().catch(()=>{});
+},MARKET_REFRESH_MS);
+document.addEventListener('visibilitychange',()=>{
+ if(ownerApproved&&!document.hidden&&marketTabVisible())loadMarketData().catch(()=>{});
+});
+$('refreshQuotes').addEventListener('click',()=>{
+ if(!ownerApproved)return overlay(true);
+ loadMarketData().catch(()=>{});
+});
+
 function drawBars(bars,symbol){
   const chart=$('priceChart');clearNode(chart);
   const good=bars.filter(b=>Number.isFinite(Number(b.c))&&b.c>0&&b.t).slice(-100);
