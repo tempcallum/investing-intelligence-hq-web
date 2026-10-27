@@ -30,6 +30,7 @@ function setSymbol(s){
  $('signalExplanation').textContent='Run a new 9/21 research scan for '+s+'.';
  $('scanSma9').textContent='—';$('scanSma21').textContent='—';
  $('scanSamples').textContent='—';$('scanBarTime').textContent='—';
+ if(autoScannerMap.has(s))displaySavedSignal(autoScannerMap.get(s));
  $('instrumentFeedTag').textContent=ownerApproved?'IEX / LOADING':'IEX / LOCKED';
  $('secLink').href='https://www.sec.gov/edgar/search/#/q='+encodeURIComponent(s);
  renderWatch();
@@ -63,6 +64,7 @@ for(const button of $('nav').querySelectorAll('button')){
    for(const b of $('nav').querySelectorAll('button'))b.classList.toggle('active',b===button);
    for(const key of Object.keys(TABS))$('view-'+key).classList.toggle('hidden',key!==tab);
    $('viewTitle').textContent=TABS[tab];
+   if(tab==='strategies'&&ownerApproved)refreshSavedScans().catch(()=>{});
  });
 }
 function updateClocks(){
@@ -121,6 +123,7 @@ async function refreshDesk(token){
    $('riskDetails').textContent='Private database connection verified. The order executor is not deployed and live-money trading is unsupported.';
    note('Private owner access verified. No trade execution is enabled.');
    await refreshAlpaca();
+   await refreshSavedScans();
  }catch(_){
    note('Could not load private data service. Check the connection and try again.',true);
  }
@@ -339,3 +342,59 @@ async function scanStrategy(){
   }finally{if(scanId===strategyScanRequest)$('scanStrategy').disabled=false}
 }
 $('scanStrategy').addEventListener('click',()=>scanStrategy().catch(()=>{}));
+
+
+// Read-only server-side automatic scanner status. No orders are submitted.
+const autoScannerMap=new Map();
+let lastAutoFetch=0;
+const timeUK=t=>{if(!t)return '—';const d=new Date(t);return Number.isFinite(d.getTime())?d.toLocaleString('en-GB')+' UK/browser time':'—'};
+function displaySavedSignal(r){
+ if(!r)return;
+ const explanations={
+   BUY:'Latest saved automatic research scan detected a candidate bullish crossover; NOT an order.',
+   HOLD:'Latest saved automatic scan found no new upward crossover. No action taken.',
+   STALE_DATA:'Latest saved automatic scan rejected stale data. No action taken.',
+   GAPPED_DATA:'Latest saved automatic scan rejected missing or irregular five-minute candles.',
+   NO_DATA:'Latest saved automatic scan did not have enough completed candles.',
+   INVALID_DATA:'Latest saved automatic scan rejected invalid market data.'
+ };
+ $('signalStatus').textContent=r.status==='BUY'?'AUTO / CANDIDATE CROSSOVER':'AUTO / '+String(r.status||'UNKNOWN').replaceAll('_',' ');
+ $('signalExplanation').textContent=(explanations[r.status]||'Saved scanner result')+' · Checked '+timeUK(r.checked_at);
+ const fmt=x=>x==null||!Number.isFinite(Number(x))?'—':Number(x).toFixed(3);
+ $('scanSma9').textContent=fmt(r.sma9);
+ $('scanSma21').textContent=fmt(r.sma21);
+ $('scanSamples').textContent='AUTO';
+ $('scanBarTime').textContent=timeUK(r.bar_time);
+}
+async function refreshSavedScans(){
+ if(!ownerApproved){$('autoScannerStatus').textContent='Sign in to read saved automatic results.';return}
+ const {data:{session}}=await client.auth.getSession();
+ if(!session)return;
+ try{
+   const data=await alpacaGet('scans',session);
+   autoScannerMap.clear();
+   const rows=Array.isArray(data.results)?data.results:[];
+   const zone=$('autoScannerList');zone.replaceChildren();
+   if(!rows.length){
+     $('autoScannerStatus').textContent='Schedule active · awaiting first completed US market-hours scan';
+     const line=document.createElement('div');line.className='tiny';
+     line.textContent='No saved evaluations yet. Opening Safari is not required for the scheduled service.';
+     zone.append(line);
+   }else{
+     const newest=rows.reduce((best,x)=>!best||Date.parse(x.checked_at)>Date.parse(best.checked_at)?x:best,null);
+     $('autoScannerStatus').textContent='Saved scans: '+rows.length+' shares · most recent '+timeUK(newest.checked_at);
+     for(const row of rows){
+       autoScannerMap.set(row.symbol,row);
+       const line=document.createElement('div');line.className='line';
+       line.style.padding='8px 0';const sym=document.createElement('span');sym.textContent=row.symbol;
+       const status=document.createElement('b');status.textContent=String(row.status||'NO DATA').replaceAll('_',' ');
+       line.append(sym,status);zone.append(line);
+     }
+     const focus=autoScannerMap.get(selected);if(focus)displaySavedSignal(focus);
+   }
+   lastAutoFetch=Date.now();
+ }catch(_){
+   $('autoScannerStatus').textContent='Saved scanner status temporarily unavailable; manual check remains optional.';
+ }
+}
+setInterval(()=>{if(ownerApproved&&!document.hidden&&!$('view-strategies').classList.contains('hidden'))refreshSavedScans().catch(()=>{})},60000);
