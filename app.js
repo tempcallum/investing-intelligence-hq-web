@@ -25,6 +25,11 @@ function setSymbol(s){
  if(!watchlist.includes(s))return;selected=s;
  $('chosenSymbol').textContent=s;$('chosenName').textContent=NAMES[s]||'Watchlist instrument — details not connected';
  $('researchSymbol').textContent=s;
+ $('strategyTicker').textContent=s;
+ $('signalStatus').textContent='NOT SCANNED';
+ $('signalExplanation').textContent='Run a new 9/21 research scan for '+s+'.';
+ $('scanSma9').textContent='—';$('scanSma21').textContent='—';
+ $('scanSamples').textContent='—';$('scanBarTime').textContent='—';
  $('instrumentFeedTag').textContent=ownerApproved?'IEX / LOADING':'IEX / LOCKED';
  $('secLink').href='https://www.sec.gov/edgar/search/#/q='+encodeURIComponent(s);
  renderWatch();
@@ -291,3 +296,46 @@ function drawBars(bars,symbol){
   const info=document.createElement('small');info.textContent='IEX 5-minute bars · Last sample '+new Date(good.at(-1).t).toLocaleString('en-GB');
   info.style.position='absolute';info.style.left='12px';info.style.bottom='5px';info.style.background='#10191bcc';chart.append(info);
 }
+
+
+// Server-side strategy uses the same private tested signal engine.
+// This frontend never requests or submits an order.
+let strategyScanRequest=0;
+const STRATEGY_EXPLANATIONS={
+  BUY:'A bullish 9/21 SMA crossover was detected on completed, contiguous, sufficiently recent IEX candles. This is an unvalidated research signal, not a trade instruction.',
+  HOLD:'No new bullish crossover on the latest completed candles. HOLD is a scanner state, not a recommendation to hold an actual position.',
+  NO_DATA:'Not enough complete five-minute IEX candles were returned. No assessment is possible.',
+  GAPPED_DATA:'One or more five-minute candles are missing or irregular. The scanner has deliberately rejected the sample.',
+  STALE_DATA:'The latest completed candle is too old for an intraday decision. This is normal outside regular market hours.',
+  INVALID_DATA:'A candle contains a non-finite or invalid close. No assessment is possible.'
+};
+async function scanStrategy(){
+  if(!ownerApproved){
+    $('signalStatus').textContent='PRIVATE ACCESS REQUIRED';
+    $('signalExplanation').textContent='Sign in and complete the sole-owner check before requesting private Alpaca data.';
+    overlay(true);return;
+  }
+  const {data:{session}}=await client.auth.getSession();
+  if(!session)return overlay(true);
+  const ticker=selected,scanId=++strategyScanRequest;
+  $('signalStatus').textContent='SCANNING '+ticker+'…';
+  $('signalExplanation').textContent='Checking most recent completed 5-minute IEX candles; no orders will be placed.';
+  $('scanStrategy').disabled=true;
+  try{
+    const data=await alpacaGet('signal',session,'&symbol='+encodeURIComponent(ticker));
+    if(scanId!==strategyScanRequest||selected!==ticker)return;
+    const status=data.signal||'UNAVAILABLE';
+    $('signalStatus').textContent=status==='BUY'?'CANDIDATE CROSSOVER':status==='HOLD'?'NO NEW CROSSOVER':status.replaceAll('_',' ');
+    $('signalExplanation').textContent=STRATEGY_EXPLANATIONS[status]||'A signal evaluation could not be completed.';
+    const fmt=n=>Number.isFinite(n)?new Intl.NumberFormat('en-US',{minimumFractionDigits:2,maximumFractionDigits:4}).format(n):'—';
+    $('scanSma9').textContent=fmt(data.sma9);$('scanSma21').textContent=fmt(data.sma21);
+    $('scanSamples').textContent=String(data.sample_bars??'—');
+    $('scanBarTime').textContent=data.bar_time?new Date(data.bar_time).toLocaleString('en-GB'):'—';
+  }catch(_){
+    if(scanId!==strategyScanRequest)return;
+    $('signalStatus').textContent='FEED UNAVAILABLE';
+    $('signalExplanation').textContent='The private IEX scanner could not retrieve a valid result. No order was placed.';
+    $('scanSma9').textContent='—';$('scanSma21').textContent='—';$('scanSamples').textContent='—';$('scanBarTime').textContent='—';
+  }finally{if(scanId===strategyScanRequest)$('scanStrategy').disabled=false}
+}
+$('scanStrategy').addEventListener('click',()=>scanStrategy().catch(()=>{}));
