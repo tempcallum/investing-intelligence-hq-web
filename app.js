@@ -27,6 +27,11 @@ function setSymbol(s){
  $('chosenSymbol').textContent=s;$('chosenName').textContent=NAMES[s]||'Watchlist instrument — details not connected';
  $('researchSymbol').textContent=s;
  $('strategyTicker').textContent=s;
+ $('backtestSymbol').textContent=s;
+ $('backtestStatus').textContent='Historical result not run for '+s+'. Select a lookback and run the test.';
+ for(const id of ['btTrainReturn','btTestReturn','btTestTrades','btTestDD','btTestWin','btTestPF'])$(id).textContent='—';
+ $('btCoverage').textContent='Awaiting historical data for '+s+'.';
+ $('btTrades').replaceChildren();$('btChart').replaceChildren();
  $('signalStatus').textContent='NOT SCANNED';
  $('signalExplanation').textContent='Run a new 9/21 research scan for '+s+'.';
  $('scanSma9').textContent='—';$('scanSma21').textContent='—';
@@ -399,3 +404,88 @@ async function refreshSavedScans(){
  }
 }
 setInterval(()=>{if(ownerApproved&&!document.hidden&&!$('view-strategies').classList.contains('hidden'))refreshSavedScans().catch(()=>{})},60000);
+
+
+// Historical research is on demand to respect free Alpaca API limits.
+// No broker trade endpoint exists. This only reads historical data.
+let pendingBacktest=0;
+function btChartRender(points){
+  const target=$('btChart');target.replaceChildren();
+  const valid=points.filter(p=>Number.isFinite(Number(p.equity))&&p.day);
+  if(valid.length<2){const msg=document.createElement('div');msg.className='tiny';msg.textContent='Too few complete sessions for a meaningful equity curve.';target.append(msg);return}
+  const values=valid.map(p=>Number(p.equity)),low=Math.min(...values,10000),high=Math.max(...values,10000);
+  const span=Math.max(high-low,10),W=640,H=175;
+  const coords=values.map((n,i)=>[
+    20+i/(values.length-1)*(W-40),
+    H-20-(n-low)/span*(H-40)
+  ]);
+  const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');
+  svg.setAttribute('viewBox','0 0 '+W+' '+H);svg.style.width='100%';svg.style.height='100%';
+  svg.setAttribute('role','img');svg.setAttribute('aria-label','Out-of-sample simulated equity curve');
+  const rule=document.createElementNS(ns,'line');
+  const baselineY=H-20-(10000-low)/span*(H-40);
+  for(const [k,v] of [['x1',20],['x2',W-20],['y1',baselineY],['y2',baselineY]])rule.setAttribute(k,String(v));
+  rule.setAttribute('stroke','#708e89');rule.setAttribute('stroke-dasharray','5 5');svg.append(rule);
+  const line=document.createElementNS(ns,'polyline');
+  line.setAttribute('fill','none');line.setAttribute('stroke','#87e4b5');line.setAttribute('stroke-width','2.5');
+  line.setAttribute('points',coords.map(p=>p.map(x=>x.toFixed(1)).join(',')).join(' '));
+  svg.append(line);target.append(svg);
+}
+function btFmtPct(x){
+ return x===null||!Number.isFinite(Number(x))?'—':(Number(x)>=0?'+':'')+Number(x).toFixed(2)+'%';
+}
+function btMoney(x){
+ return x===null||!Number.isFinite(Number(x))?'—':new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(Number(x));
+}
+function btPF(x){
+ return x===null||!Number.isFinite(Number(x))?'N/A':Number(x).toFixed(2)+'×';
+}
+async function runBacktest(){
+ const id=++pendingBacktest,symbol=selected,days=Number($('backtestDays').value);
+ if(!ownerApproved){
+   $('backtestStatus').textContent='Sign in as the authorised account owner to access historical Alpaca IEX data.';
+   overlay(true);return;
+ }
+ const {data:{session}}=await client.auth.getSession();
+ if(!session)return overlay(true);
+ $('backtestStatus').textContent='Fetching and checking historical IEX candles for '+symbol+' · '+days+' calendar days. This can take several requests.';
+ $('runBacktest').disabled=true;
+ try{
+   const data=await alpacaGet('backtest',session,'&symbol='+encodeURIComponent(symbol)+'&days='+days);
+   if(pendingBacktest!==id||selected!==symbol)return;
+   const research=data.backtest,train=research.train,oos=research.out_of_sample;
+   $('btTrainReturn').textContent=btFmtPct(train.net_return_pct);
+   $('btTestReturn').textContent=btFmtPct(oos.net_return_pct);
+   $('btTestTrades').textContent=String(oos.trade_count);
+   $('btTestDD').textContent=btFmtPct(oos.max_drawdown_pct);
+   $('btTestWin').textContent=btFmtPct(oos.win_rate_pct);
+   $('btTestPF').textContent=btPF(oos.profit_factor);
+   const sufficient=oos.sample_sufficient===true;
+   $('backtestStatus').textContent=sufficient?'RESEARCH SAMPLE AVAILABLE — NOT VALIDATED FOR TRADING':
+     'INSUFFICIENT EVIDENCE — LATER PERIOD HAS ONLY '+oos.trade_count+' COMPLETED TRADES ACROSS '+oos.sessions+' SESSIONS. NO STRATEGY EDGE ESTABLISHED.';
+   $('btCoverage').textContent=research.observed_bars+' IEX bars · '+research.eligible_sessions+' eligible sessions · '+
+     research.excluded_incomplete_days+' excluded incomplete sessions · '+data.pages+' API page(s) · '+
+     'train '+(train.start_day||'—')+' to '+(train.end_day||'—')+' · later '+(oos.start_day||'—')+' to '+(oos.end_day||'—');
+   btChartRender(oos.equity_curve||[]);
+   const container=$('btTrades');container.replaceChildren();
+   const trades=oos.trade_preview||[];
+   if(!trades.length){const d=document.createElement('div');d.textContent='No completed hypothetical trades in the later period.';container.append(d);}
+   for(const trade of trades.slice(0,8)){
+      const line=document.createElement('div');line.className='line';
+      const lhs=document.createElement('span');lhs.textContent=trade.day+' · '+trade.reason+' · '+trade.qty+' sh';
+      const rhs=document.createElement('b');rhs.textContent=btMoney(trade.net_pnl);
+      line.append(lhs,rhs);container.append(line);
+   }
+   $('btDisclosure').textContent='Research-only simulation. Costs assumed 6 bps per side; $10,000 independent starting capital per segment, 10% position cap. '+
+      'Historical IEX 5-minute bars, next-candle open, split adjusted, intraday flattening. '+
+      'OHLC-low drawdown estimate may miss adverse ticks. Trades shown are NOT actual Alpaca fills. No future performance implied.';
+ }catch(e){
+   if(pendingBacktest!==id)return;
+   $('backtestStatus').textContent=e.code==='INSUFFICIENT_IEX_HISTORY'?
+     'Not enough historical IEX bars returned for a reliable test. Try another ticker or longer period.':
+     e.code==='HISTORICAL_DATA_TRUNCATED'?'Historical dataset exceeded the bounded page limit; no incomplete backtest was returned.':
+     e.code==='ALPACA_RATE_LIMITED'?'Free Alpaca API request allowance reached. Retry later.':
+     'Historical market-data service did not complete the test. No trades have been submitted.';
+ }finally{if(pendingBacktest===id)$('runBacktest').disabled=false}
+}
+$('runBacktest').addEventListener('click',()=>runBacktest().catch(()=>{}));
