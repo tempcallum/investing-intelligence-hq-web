@@ -36,6 +36,7 @@ function setSymbol(s){
  for(const id of ['btTrainReturn','btTestReturn','btTestTrades','btTestDD','btTestWin','btTestPF'])$(id).textContent='—';
  $('btCoverage').textContent='Awaiting historical data for '+s+'.';
  $('btTrades').replaceChildren();$('btChart').replaceChildren();
+ $('btCostStress').replaceChildren();const tip=document.createElement('div');tip.className='tiny';tip.textContent='Select the ticker, then run a new backtest to compare trading-cost scenarios.';$('btCostStress').append(tip);
  $('signalStatus').textContent='NOT SCANNED';
  $('signalExplanation').textContent='Run a new 9/21 research scan for '+s+'.';
  $('scanSma9').textContent='—';$('scanSma21').textContent='—';
@@ -465,6 +466,14 @@ async function runBacktest(){
    $('btTestDD').textContent=Number.isFinite(oos.max_drawdown_pct)?Number(oos.max_drawdown_pct).toFixed(2)+'%':'—';
    $('btTestWin').textContent=btFmtPct(oos.win_rate_pct);
    $('btTestPF').textContent=btPF(oos.profit_factor);
+   const stress=$('btCostStress');stress.replaceChildren();
+   for(const scenario of research.cost_sensitivity_bps_per_side||[]){
+      const line=document.createElement('div');line.className='line';
+      const left=document.createElement('span');left.textContent=String(scenario.bps_per_side)+' bps / side'+(scenario.bps_per_side===6?' · BASELINE':'');
+      const right=document.createElement('b');right.textContent=btFmtPct(scenario.out_of_sample_return_pct)+' · '+scenario.out_of_sample_trades+' trades';
+      line.append(left,right);stress.append(line);
+   }
+
    const sufficient=oos.sample_sufficient===true;
    $('backtestStatus').textContent=sufficient?'RESEARCH SAMPLE AVAILABLE — NOT VALIDATED FOR TRADING':
      'INSUFFICIENT EVIDENCE — LATER PERIOD HAS ONLY '+oos.trade_count+' COMPLETED TRADES ACROSS '+oos.sessions+' SESSIONS. NO STRATEGY EDGE ESTABLISHED.';
