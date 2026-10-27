@@ -53,13 +53,19 @@
     <div class="pbody stack">
       <div class="row" style="display:flex;align-items:center;justify-content:space-between;gap:10px">
         <div><div class="signal">SELECTED EQUITY</div><div class="bigstat mono" id="strategyTicker">AAPL</div></div>
-        <button id="scanStrategy" class="btn" type="button">RUN SIGNAL CHECK ↗</button>
+        <button id="scanStrategy" class="btn" type="button">CHECK NOW (OPTIONAL) ↗</button>
       </div>
-      <div class="info">Prototype: 9-candle SMA crossing above 21-candle SMA on completed 5-minute IEX bars. A candidate crossover is not a recommendation or proven profitable strategy. Bar gaps and stale data fail closed.</div>
+      <div class="info" style="background:#152f28;border-color:#3a6552">
+<strong style="color:var(--green)">AUTOMATIC SERVER SCANNER · ACTIVE</strong>
+<div class="tiny" style="margin-top:6px">Five US shares monitored every five minutes during regular New York trading sessions. Research results are stored in Supabase even when Safari is closed. No broker orders.</div>
+<div id="autoScannerStatus" class="mono m12" style="color:var(--green);margin-top:10px">Checking latest saved analysis…</div>
+<div id="autoScannerList" class="stack" style="margin-top:8px"></div>
+</div>
+<div class="info">Prototype: 9-candle SMA crossing above 21-candle SMA on completed 5-minute IEX bars. A candidate crossover is not a recommendation or proven profitable strategy. Bar gaps and stale data fail closed.</div>
       <div class="shelf" style="padding:12px 0">
         <div class="signal">LATEST SIGNAL EVALUATION</div>
         <div class="bigstat mono" id="signalStatus">NOT SCANNED</div>
-        <div class="tiny" id="signalExplanation">Sign in with your Investing HQ owner account and tap Run Signal Check. No orders are created.</div>
+        <div class="tiny" id="signalExplanation">Results will appear automatically after a completed market-hours scan. You can also use the optional manual check.</div>
       </div>
       <div class="metricrow">
         <div class="metric"><div class="k">SMA 9</div><div class="v" id="scanSma9">—</div></div>
@@ -70,7 +76,7 @@
       <div class="line"><span>Underlying data</span><b>IEX · 5 MIN</b></div>
       <div class="line"><span>Historical backtest</span><b class="warning">NOT VALIDATED</b></div>
       <div class="line"><span>Execution authority</span><b class="green">NONE</b></div>
-      <div class="locked">Research scanner only. No broker orders, alerts or scheduled execution are triggered here.</div>
+      <div class="locked">Scheduled research analysis only. No broker orders or automatic order execution can be triggered here.</div>
     </div>
   </section>
   <section class="panel">
