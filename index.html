@@ -92,6 +92,34 @@
     </div>
   </section>
 </div>
+<section class="panel" style="margin-top:12px">
+<div class="phead"><b>HISTORICAL BACKTEST / LONG ONLY</b><small>RESEARCH · IEX</small></div>
+<div class="pbody stack">
+ <div class="info">Hypothetical 9/21 SMA crossovers on completed five-minute IEX candles. Long entries execute at the <b>next bar's opening price</b>; no planned overnight holds. Includes 6 basis points per side in estimated costs and a 10% exposure cap. This is NOT a record of Alpaca trades.</div>
+ <div style="display:flex;align-items:end;gap:9px;flex-wrap:wrap">
+   <div style="flex:1;min-width:130px"><div class="label muted mono m12">LOOKBACK</div><select id="backtestDays" aria-label="Historical lookback" style="background:#101b1e;color:#dbf0e1;border:1px solid #395654;border-radius:6px;padding:11px;width:100%;margin-top:5px"><option value="30">Last 30 days</option><option value="60" selected>Last 60 days</option><option value="90">Last 90 days</option></select></div>
+   <div style="flex:1;min-width:110px"><div class="label muted mono m12">SELECTED TICKER</div><div id="backtestSymbol" class="bigstat mono" style="margin:7px 0 0">AAPL</div></div>
+   <button class="btn" id="runBacktest" type="button">RUN BACKTEST ↗</button>
+ </div>
+ <div id="backtestStatus" class="locked">No historical result yet. Select a ticker and run an on-demand backtest. This does not submit orders or use real money.</div>
+ <div class="signal">PERFORMANCE COMPARISON · INDEPENDENT STARTING EQUITY $10,000 EACH</div>
+ <div class="metricrow">
+   <div class="metric"><div class="k">EARLIER 70% RETURN</div><div class="v" id="btTrainReturn">—</div></div>
+   <div class="metric"><div class="k">LATER 30% RETURN</div><div class="v" id="btTestReturn">—</div></div>
+   <div class="metric"><div class="k">LATER TRADES</div><div class="v" id="btTestTrades">—</div></div>
+ </div>
+ <div class="metricrow">
+   <div class="metric"><div class="k">LATER MAX DRAWDOWN*</div><div class="v" id="btTestDD">—</div></div>
+   <div class="metric"><div class="k">LATER WIN RATE</div><div class="v" id="btTestWin">—</div></div>
+   <div class="metric"><div class="k">LATER PROFIT FACTOR</div><div class="v" id="btTestPF">—</div></div>
+ </div>
+ <div class="signal">OUT-OF-SAMPLE SIMULATED EQUITY · NOT A FORECAST</div>
+ <div id="btChart" class="chart" style="height:175px"><div><strong>NO BACKTEST RUN</strong><small>Later-period hypothetical equity, not real brokerage performance.</small></div></div>
+ <div class="tiny mono" id="btCoverage">Dataset coverage not yet measured.</div>
+ <div id="btTrades" class="stack tiny">Recent hypothetical trades will appear here if valid complete sessions produce any.</div>
+ <div id="btDisclosure" class="locked">*Drawdown estimated from intraday OHLC lows, not tick-by-tick prices. IEX covers only one US exchange. Backtests can be unreliable or overfit; zero trades does not mean zero risk.</div>
+</div>
+</section>
 </section>
 <section id="view-paper" class="view hidden"><div class="workspace" style="margin-top:0"><section class="panel"><div class="phead"><b>ALPACA / PAPER PORTFOLIO</b><span>PRIVATE DATA</span></div><div class="pbody stack"><div class="bigstat" id="paperEquity">ACCOUNT LOCKED</div><div class="tiny" id="paperMessage">The private portfolio requires owner authorisation. No Alpaca paper API key has been added to the backend yet.</div><div class="actions"><button class="btn" id="paperLogin">OPEN PRIVATE ACCOUNT →</button><button class="btn" id="paperRefresh">REFRESH STATUS</button></div><div class="locked">No buy/sell order controls are enabled. This is an analysis workstation, not an active trading session.</div></div></section><section class="panel"><div class="phead"><b>POSITION &amp; ORDER BLOTTER</b><span>READ-ONLY</span></div><div class="pbody"><div class="label muted mono m12">OPEN PAPER POSITIONS</div><div id="positionBlotter" class="tiny">Awaiting account connection.</div><div class="label muted mono m12" style="margin-top:14px">RECENT PAPER ORDERS</div><div id="orderBlotter" class="tiny">No verified paper order records can be shown until your owner login and Alpaca connection are approved.</div></div></section></div></section>
 <section id="view-risk" class="view hidden"><div class="workspace" style="margin-top:0"><section class="panel"><div class="phead"><b>RISK CONTROL / AUDIT LOG</b><span>RESTRICTED</span></div><div class="pbody stack"><div class="line"><span>Trading enabled</span><b class="green" id="riskEnabled">NO</b></div><div class="line"><span>Live orders</span><b>UNSUPPORTED</b></div><div class="line"><span>Confirmed journal entries</span><b id="auditEntries">—</b></div><div class="line"><span>Alpaca</span><b>UNLINKED</b></div><div class="info" id="riskDetails">Authenticated journal entries are visible only to the enrolled owner. Never assume trading is enabled based on the appearance of this screen.</div></div></section><section class="panel"><div class="phead"><b>SECURITY BOUNDARIES</b><span>V1</span></div><div class="pbody stack"><div class="info">Public market interface; private portfolio and trading state gated behind Supabase authentication and single-owner approval. No brokerage credentials in GitHub or the browser.</div><div class="locked">A separate website origin is recommended before considering real-money integrations.</div></div></section></div></section>
