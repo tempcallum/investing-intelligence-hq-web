@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/><meta name="theme-color" content="#0b1210"/><meta name="referrer" content="no-referrer"/><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://esm.sh https://*.esm.sh; style-src 'unsafe-inline'; connect-src 'self' https://esm.sh https://*.esm.sh https://ziuvbhwurlplpgjvnwwu.supabase.co; img-src 'self' data:; base-uri 'none'; form-action 'none'"/>
+<title>Investing Intelligence HQ — Private Trading Desk</title>
+<style>
+:root{font-family:Inter,system-ui,-apple-system,Arial,sans-serif;color:#eaf7ed;background:#0b1210;line-height:1.45}*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(circle at 15% 0%,#1c4330 0%,#0b1210 33%,#0b1210 100%);min-height:100vh}
+.wrap{width:min(960px,100%);margin:auto;padding:25px 18px 110px}.head{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.mark{width:42px;height:42px;background:#a1f2aa;color:#10251a;border-radius:13px;display:grid;place-items:center;font-weight:900;letter-spacing:-2px}.identity{display:flex;align-items:center;gap:10px}.eyebrow{font-size:10px;text-transform:uppercase;letter-spacing:2.2px;color:#92b79f}.brand{font-size:13px;letter-spacing:.6px;font-weight:800}
+.status{border:1px solid #335743;color:#b9f8c4;border-radius:50px;padding:7px 11px;font-size:11px;white-space:nowrap}.status i{display:inline-block;width:7px;height:7px;background:#8af0a2;border-radius:50%;margin-right:5px}
+.hero{padding:64px 0 27px}h1{font-size:clamp(40px,8vw,70px);line-height:1.05;letter-spacing:-2px;margin:15px 0}h1 span{color:#a1f2aa}.lede{max-width:590px;color:#b3c8b8;font-size:15px}
+.grid{display:grid;grid-template-columns:1.2fr .8fr;gap:14px}.box{background:#14221c;border:1px solid #2b4536;border-radius:20px;padding:23px;min-width:0;box-shadow:0 6px 25px #0002}
+.label{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#9cbaa5}.value{font-size:37px;font-weight:800;letter-spacing:-1.7px;margin:10px 0;color:#f1fff3}.muted{color:#a7bbae;font-size:13px}.pill{background:#203c2b;color:#b6fac0;padding:7px 11px;border-radius:999px;font-size:11px;font-weight:700}.row{display:flex;gap:10px;justify-content:space-between;align-items:center}.divider{height:1px;background:#294536;margin:19px 0}
+.panel{background:#192b21;border:1px solid #32513d;border-radius:14px;padding:13px 15px;margin-top:13px;color:#e0f8e5;font-size:13px}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:14px}.mini{background:#14221c;border:1px solid #294234;border-radius:17px;padding:17px;min-height:124px}.mini b{display:block;margin:10px 0 6px}.mini p{font-size:12px;color:#96ae9d;margin:0}
+input{width:100%;border-radius:11px;background:#0c1911;border:1px solid #3d5f48;color:#e8ffed;padding:13px;margin:7px 0;font-size:16px}
+button{background:#a1f2aa;color:#0a2314;border:0;border-radius:11px;padding:13px 16px;font-weight:750;cursor:pointer;font-size:14px}button.secondary{background:#243c2e;color:#e5fce9}button:disabled{opacity:.5;cursor:not-allowed}
+.buttons{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}.note{font-size:12px;color:#91a99a;line-height:1.65;margin-top:14px}.danger{color:#ffb2a5}.hidden{display:none!important}
+.footer{margin-top:30px;font-size:11px;color:#789383}
+@media(max-width:650px){.grid{grid-template-columns:1fr}.cards{grid-template-columns:repeat(2,1fr)}.hero{padding-top:43px}.box{padding:19px}.value{font-size:33px}}
+</style></head><body><div class="wrap">
+<header class="head"><div class="identity"><div class="mark">II</div><div><div class="brand">INVESTING INTELLIGENCE</div><div class="eyebrow">HQ / Private Trading Desk</div></div></div><div class="status"><i></i>PAPER ONLY</div></header>
+<section class="hero"><div class="eyebrow">Your markets · Your control</div><h1>The trading<br/><span>desk.</span></h1><p class="lede">A dedicated investment research and automated paper-trading workspace, designed for your phone. Account data stays locked behind authorised access.</p></section>
+<div class="grid">
+<div class="box"><div class="row"><span class="label">Portfolio</span><span class="pill">SIMULATED · NOT LIVE</span></div><div class="value" id="portfolio">Not connected</div><div class="muted">No Alpaca account or real-money brokerage is connected.</div><div class="divider"></div><div class="row"><div><span class="label">Little Trader</span><div style="font-size:20px;font-weight:800;margin-top:5px" id="botState">OFF / SAFE</div></div><span class="pill">Orders disabled</span></div><div class="panel" id="statusPanel">Setup in progress. Paper trading cannot be enabled from this initial version.</div></div>
+<div class="box"><div class="label">Private access</div><h2 style="margin:9px 0 8px">Sign in to your desk</h2><p class="muted">Use the account specifically authorised for this dashboard. This is separate from your Supabase admin login.</p>
+<div id="loginForm"><input type="email" id="email" autocomplete="email" placeholder="Email address" aria-label="Email"/><input type="password" id="password" autocomplete="current-password" placeholder="Password (for password sign-in)" aria-label="Password"/>
+<div class="buttons"><button id="passwordLogin">Sign in</button><button class="secondary" id="magicLogin">Send email link</button></div></div>
+<div id="signedIn" class="hidden"><div class="panel">Signed in as <b id="userEmail"></b></div><div class="buttons"><button id="refresh">Refresh desk</button><button class="secondary" id="signout">Sign out</button></div></div>
+<p id="authMessage" class="note">No brokerage credentials are stored in this browser. Access to the private dashboard remains disabled until the owner account is verified and enrolled.</p>
+</div></div>
+<div class="cards"><div class="mini"><span class="eyebrow">Markets</span><b>Market Scout</b><p>Strategy signals will appear here after scanning is configured.</p></div>
+<div class="mini"><span class="eyebrow">Companies</span><b>Research</b><p>SEC filings and company fundamentals will be added to the desk.</p></div>
+<div class="mini"><span class="eyebrow">Risk</span><b>Risk Sentinel</b><p>Paper trading defaults OFF. No live-money execution routes.</p></div>
+<div class="mini"><span class="eyebrow">Audit</span><b>Decision Journal</b><p id="journal">No verified activity displayed yet.</p></div></div>
+<div class="footer">INDEPENDENT SOFTWARE · NOT AFFILIATED WITH JPMORGAN CHASE · NO PROFIT GUARANTEE · US PAPER ACCOUNT VALUES WILL BE IN USD</div>
+</div>
+<script type="module" src="./app.js"></script></body></html>
