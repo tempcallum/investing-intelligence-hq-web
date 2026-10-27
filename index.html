@@ -46,7 +46,47 @@
 <section class="panel"><div class="phead"><b>RISK SENTINEL</b><small>PRE-TRADE</small></div><div class="pbody stack"><div class="info">Independent risk limits and a kill switch will govern simulated orders when the execution engine is tested.</div><div class="line" style="padding:8px 0"><span>Exposure</span><b>—</b></div><div class="line" style="padding:8px 0"><span>Daily P&amp;L</span><b>—</b></div><div class="line" style="padding:8px 0"><span>Last inspection</span><b>—</b></div></div></section></div>
 </div></section>
 <section id="view-research" class="view hidden"><div class="workspace" style="margin-top:0"><section class="panel"><div class="phead"><b>COMPANY INTELLIGENCE</b><span>REGULATORY SOURCES</span></div><div class="pbody stack"><div class="label muted m12">SELECTED US EQUITY</div><div class="bigstat mono" id="researchSymbol">AAPL</div><div class="info">Official SEC filings are available through the public EDGAR search. Automated financial statement extraction and analyst-grade valuation models are in development — there are no invented financial ratios here.</div><div class="actions"><a id="secLink" class="btn" href="https://www.sec.gov/edgar/search/" target="_blank" rel="noopener noreferrer">VIEW SEC FILINGS ↗</a><button class="btn" id="researchNext">NEXT WATCHLIST TICKER →</button></div></div></section><section class="panel"><div class="phead"><b>RESEARCH PIPELINE</b><span>BUILD STATUS</span></div><div class="line"><span>SEC filings</span><b>MANUAL SOURCE</b></div><div class="line"><span>Fundamental engine</span><b>NOT CONNECTED</b></div><div class="line"><span>Quarterly earnings</span><b>NOT CONNECTED</b></div><div class="line"><span>News sentiment</span><b>NOT CONNECTED</b></div><div class="line"><span>Valuation scenarios</span><b>NOT CONNECTED</b></div></section></div></section>
-<section id="view-strategies" class="view hidden"><div class="workspace" style="margin-top:0"><section class="panel"><div class="phead"><b>STRATEGY LABORATORY</b><span>OFFLINE MODULES</span></div><div class="pbody stack"><div class="bigstat">5-MIN TREND SCANNER</div><div class="info">Prototype 9/21-period moving-average crossover logic is stored in the private repository. Seven earlier offline test cases passed. Those tests verify software behaviour, not profitable performance.</div><div class="line"><span>Historical backtest</span><b>NOT COMPLETED</b></div><div class="line"><span>Forward paper sample</span><b>0 VERIFIED TRADES</b></div><div class="line"><span>Live data connector</span><b>NOT LINKED</b></div></div></section><section class="panel"><div class="phead"><b>STRATEGY GOVERNANCE</b><span>RULES</span></div><div class="pbody stack"><div class="info">No strategy can be promoted to autonomous execution before authenticated broker connectivity, realistic slippage testing, reliable scheduling, and risk-limit checks.</div><div class="locked">THIS PAGE CANNOT SUBMIT TRADES</div></div></section></div></section>
+<section id="view-strategies" class="view hidden">
+<div class="workspace" style="margin-top:0">
+  <section class="panel">
+    <div class="phead"><b>STRATEGY LABORATORY</b><span>RESEARCH ONLY · IEX 5-MIN</span></div>
+    <div class="pbody stack">
+      <div class="row" style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+        <div><div class="signal">SELECTED EQUITY</div><div class="bigstat mono" id="strategyTicker">AAPL</div></div>
+        <button id="scanStrategy" class="btn" type="button">RUN SIGNAL CHECK ↗</button>
+      </div>
+      <div class="info">Prototype: 9-candle SMA crossing above 21-candle SMA on **completed 5-minute IEX bars**. A candidate crossover is not a recommendation or proven profitable strategy. Bar gaps and stale data fail closed.</div>
+      <div class="shelf" style="padding:12px 0">
+        <div class="signal">LATEST SIGNAL EVALUATION</div>
+        <div class="bigstat mono" id="signalStatus">NOT SCANNED</div>
+        <div class="tiny" id="signalExplanation">Sign in with your Investing HQ owner account and tap Run Signal Check. No orders are created.</div>
+      </div>
+      <div class="metricrow">
+        <div class="metric"><div class="k">SMA 9</div><div class="v" id="scanSma9">—</div></div>
+        <div class="metric"><div class="k">SMA 21</div><div class="v" id="scanSma21">—</div></div>
+        <div class="metric"><div class="k">BAR SAMPLES</div><div class="v" id="scanSamples">—</div></div>
+      </div>
+      <div class="line"><span>Completed candle</span><b id="scanBarTime">—</b></div>
+      <div class="line"><span>Underlying data</span><b>IEX · 5 MIN</b></div>
+      <div class="line"><span>Historical backtest</span><b class="warning">NOT VALIDATED</b></div>
+      <div class="line"><span>Execution authority</span><b class="green">NONE</b></div>
+      <div class="locked">Research scanner only. No broker orders, alerts or scheduled execution are triggered here.</div>
+    </div>
+  </section>
+  <section class="panel">
+    <div class="phead"><b>STRATEGY GOVERNANCE</b><span>FAIL CLOSED</span></div>
+    <div class="pbody stack">
+      <div class="info">Before we consider automated paper trading, the strategy needs walk-forward backtesting, transaction costs, slippage assumptions, daily drawdown limits, a kill switch and a monitored paper-trade history.</div>
+      <div class="line"><span>Crossover periods</span><b>9 / 21</b></div>
+      <div class="line"><span>Bar interval</span><b>5 MIN</b></div>
+      <div class="line"><span>Incomplete candle</span><b class="green">REJECTED</b></div>
+      <div class="line"><span>Stale/gapped feed</span><b class="green">REJECTED</b></div>
+      <div class="line"><span>Paper order executor</span><b>OFFLINE</b></div>
+      <div class="locked">Candidate signal ≠ trading decision. No automatic order route exists in this terminal.</div>
+    </div>
+  </section>
+</div>
+</section>
 <section id="view-paper" class="view hidden"><div class="workspace" style="margin-top:0"><section class="panel"><div class="phead"><b>ALPACA / PAPER PORTFOLIO</b><span>PRIVATE DATA</span></div><div class="pbody stack"><div class="bigstat" id="paperEquity">ACCOUNT LOCKED</div><div class="tiny" id="paperMessage">The private portfolio requires owner authorisation. No Alpaca paper API key has been added to the backend yet.</div><div class="actions"><button class="btn" id="paperLogin">OPEN PRIVATE ACCOUNT →</button><button class="btn" id="paperRefresh">REFRESH STATUS</button></div><div class="locked">No buy/sell order controls are enabled. This is an analysis workstation, not an active trading session.</div></div></section><section class="panel"><div class="phead"><b>POSITION &amp; ORDER BLOTTER</b><span>READ-ONLY</span></div><div class="pbody"><div class="label muted mono m12">OPEN PAPER POSITIONS</div><div id="positionBlotter" class="tiny">Awaiting account connection.</div><div class="label muted mono m12" style="margin-top:14px">RECENT PAPER ORDERS</div><div id="orderBlotter" class="tiny">No verified paper order records can be shown until your owner login and Alpaca connection are approved.</div></div></section></div></section>
 <section id="view-risk" class="view hidden"><div class="workspace" style="margin-top:0"><section class="panel"><div class="phead"><b>RISK CONTROL / AUDIT LOG</b><span>RESTRICTED</span></div><div class="pbody stack"><div class="line"><span>Trading enabled</span><b class="green" id="riskEnabled">NO</b></div><div class="line"><span>Live orders</span><b>UNSUPPORTED</b></div><div class="line"><span>Confirmed journal entries</span><b id="auditEntries">—</b></div><div class="line"><span>Alpaca</span><b>UNLINKED</b></div><div class="info" id="riskDetails">Authenticated journal entries are visible only to the enrolled owner. Never assume trading is enabled based on the appearance of this screen.</div></div></section><section class="panel"><div class="phead"><b>SECURITY BOUNDARIES</b><span>V1</span></div><div class="pbody stack"><div class="info">Public market interface; private portfolio and trading state gated behind Supabase authentication and single-owner approval. No brokerage credentials in GitHub or the browser.</div><div class="locked">A separate website origin is recommended before considering real-money integrations.</div></div></section></div></section>
 <footer class="bottom">IIHQ / INDEPENDENT INVESTMENT RESEARCH SOFTWARE · NOT AFFILIATED WITH JPMORGAN CHASE OR BLOOMBERG<br>US PRICES FROM ALPACA IEX ONLY (AUTHORISED USERS) · NO FULL-MARKET TAPE · PAPER FIGURES IN USD</footer>
