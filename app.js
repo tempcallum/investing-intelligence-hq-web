@@ -19,6 +19,7 @@ if('serviceWorker' in navigator && location.protocol==='https:'){
 const DEFAULT=['AAPL','MSFT','NVDA','AMZN','META','GOOGL','TSLA','JPM','SPY','QQQ'];
 const NAMES={AAPL:'Apple Inc.',MSFT:'Microsoft Corporation',NVDA:'NVIDIA Corporation',AMZN:'Amazon.com Inc.',META:'Meta Platforms Inc.',GOOGL:'Alphabet Inc.',TSLA:'Tesla Inc.',JPM:'JPMorgan Chase & Co.',SPY:'SPDR S&P 500 ETF',QQQ:'Invesco QQQ Trust',AMD:'Advanced Micro Devices',PLTR:'Palantir Technologies','BRK.B':'Berkshire Hathaway'};
 const TABS={overview:'Your portfolio',control:'Market data control centre',markets:'Market overview',research:'Company intelligence',strategies:'Strategy laboratory',paper:'Paper trading desk',risk:'Risk & audit',ops:'Market opening checks',discover:'Opportunity discovery & journal'};
+let ciRequest=0; // Initialised before initial setSymbol() calls the hoisted research UI reset.
 let selected='AAPL',signedIn=false,ownerApproved=false;
 const autoScannerMap=new Map();
 function symbols(){
@@ -1034,7 +1035,6 @@ setInterval(()=>{
 
 // Owner-only SEC disclosures / US GAAP and curated Fed event windows.
 // Explicitly NEVER clearance for automated execution.
-let ciRequest=0;
 const ciDate=t=>{if(!t)return '—';const d=new Date(t);
  return Number.isFinite(d.getTime())?d.toLocaleString('en-GB',{timeZone:'Europe/London',
   year:'numeric',month:'short',day:'2-digit',hour:'2-digit',minute:'2-digit'})+' UK':'—'};
