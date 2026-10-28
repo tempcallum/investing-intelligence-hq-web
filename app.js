@@ -9,6 +9,12 @@ const FRED_API=PROJECT_URL+'/functions/v1/iihq-fred?action=overview';
 const OPPORTUNITY_URL=PROJECT_URL+'/functions/v1/iihq-opportunity-radar?action=overview';
 const client=createClient(PROJECT_URL,PUBLISHABLE_KEY,{auth:{persistSession:true,storage:window.sessionStorage,autoRefreshToken:true,detectSessionInUrl:true}});
 const $=id=>document.getElementById(id);
+const opsEventDate=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',
+ year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
+const opsDate=k=>opsEventDate.find(x=>x.type===k)?.value||'';
+if(opsDate('year')+'-'+opsDate('month')+'-'+opsDate('day')!=='2026-10-28')
+ $('opsFomc')?.classList.add('hidden');
+
 // Add-to-Home-Screen iPhone web-app support. Public assets only are cached by sw.js.
 if('serviceWorker' in navigator && location.protocol==='https:'){
   window.addEventListener('load',()=>{
