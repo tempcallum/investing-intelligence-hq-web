@@ -39,6 +39,24 @@
 .actions{display:flex;gap:8px;flex-wrap:wrap}.btn{background:#18372b;color:var(--green);border:1px solid #36654a;padding:10px 13px;border-radius:6px;font-size:12px;font-weight:800;text-decoration:none;display:inline-flex;align-items:center;justify-content:center}.btn:hover{background:#214c38}.warning{color:var(--orange)}.locked{color:#91aca6;background:#152023;border:1px solid #273c3d;border-radius:6px;font-size:11px;padding:11px 12px}
 .bottom{font:10px ui-monospace,monospace;color:#78918b;margin-top:20px;line-height:1.8}
 
+/* First-open sign-in gate: visible before JavaScript loads. Never stores a password. */
+.auth-gate{z-index:100;min-height:100dvh;overflow-y:auto;background:radial-gradient(ellipse at 50% 20%,#16362f 0%,#0a1818 42%,#060f11 100%);padding:max(20px,env(safe-area-inset-top)) 18px max(24px,env(safe-area-inset-bottom));}
+.auth-dialog{width:min(460px,100%);padding:clamp(23px,5vw,34px);background:#101d1e;border:1px solid #386454;border-radius:19px;box-shadow:0 30px 110px #000a}
+.auth-heading{display:flex;align-items:center;gap:14px}
+.auth-logo{width:52px;height:52px;border:1px solid #3b7658;background:#173e30;color:#b6f9d6;border-radius:14px;display:grid;place-items:center;font:850 15px ui-monospace,monospace;letter-spacing:-.8px;flex-shrink:0}
+.auth-heading>div:nth-child(2){flex:1;min-width:0}
+.auth-eyebrow{font:750 10px ui-monospace,monospace;color:#91baa9;letter-spacing:.09em;line-height:1.45}
+.auth-heading h2{font-size:clamp(22px,5vw,27px);margin:4px 0 0;letter-spacing:-.5px}
+.auth-dialog .auth-intro{font-size:13px;line-height:1.7;color:#b0c7bd;margin:22px 0}
+.auth-dialog input{font-size:16px;min-height:48px;border-radius:10px;background:#0a1516}
+.auth-dialog label{font-size:11px;letter-spacing:.07em;margin:15px 0 7px}
+.auth-dialog .authbuttons{display:grid;grid-template-columns:1fr;gap:9px;margin-top:21px}
+.auth-dialog .authbuttons button{min-height:47px;font-size:13px}
+.auth-loading{padding:22px 10px;text-align:center;color:#a4c8b9;font-size:13px}
+.auth-security{display:flex;gap:8px 15px;flex-wrap:wrap;margin-top:20px;padding-top:15px;border-top:1px solid #27463c;color:#83b49d;font:650 10px ui-monospace,monospace;letter-spacing:.04em}
+.auth-dialog .msg{line-height:1.6;margin-top:18px}
+@media(max-width:520px){.auth-gate{place-items:center}.auth-dialog{padding:24px 20px}.auth-logo{width:46px;height:46px}.auth-security{gap:8px}}
+
 /* iPhone app branding and safe-area polish */
 .logo{background:#071b17;border:1px solid #27614a;overflow:hidden;border-radius:11px}
 .logo img{display:block;width:100%;height:100%;object-fit:cover;border-radius:10px}
@@ -578,7 +596,30 @@ body{background:var(--bg)}.shell{max-width:1330px;padding-top:18px}
 </section>
 <footer class="bottom">IIHQ · INDEPENDENT RESEARCH WORKSTATION · PAPER MODE<br>MARKET DATA: ALPACA IEX · PARTIAL US EXCHANGE COVERAGE · VIRTUAL BALANCES IN USD</footer>
 </main>
-<div class="overlay hidden" id="authOverlay" role="dialog" aria-modal="true" aria-labelledby="authTitle"><div class="dialog"><div style="display:flex;align-items:center;justify-content:space-between"><h2 id="authTitle">Authorised account access</h2><button class="close" id="authClose" aria-label="Close login">×</button></div><p>Sign in only when you need private portfolio details. Public market research requires no account.</p><div id="loginForm"><label for="email">EMAIL</label><input id="email" type="email" autocomplete="email" placeholder="your@email.com"><label for="password">PASSWORD</label><input id="password" type="password" autocomplete="current-password" placeholder="Supabase Auth password"><div class="authbuttons"><button class="btn" id="passwordLogin">SIGN IN</button><button class="btn" id="magicLogin">EMAIL SIGN-IN LINK</button></div></div><div id="signedIn" class="hidden"><div class="info">Authenticated as <b id="userEmail"></b></div><div class="authbuttons"><button class="btn" id="refresh">REFRESH PRIVATE DESK</button><button class="btn" id="signout">SIGN OUT</button></div></div><p id="authMessage" class="msg">Your Supabase administration login is separate from this dashboard user. Create an Auth user in the Investing HQ project first.</p></div></div>
-<script type="module" src="./app.js?v=20261028-opportunity-v1"></script>
+<div class="overlay auth-gate" id="authOverlay" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+ <div class="dialog auth-dialog">
+  <div class="auth-heading">
+   <div class="auth-logo" aria-hidden="true">IIHQ</div>
+   <div><div class="auth-eyebrow">INVESTING INTELLIGENCE HQ</div><h2 id="authTitle">Welcome back</h2></div>
+   <button class="close hidden" id="authClose" type="button" aria-label="Close account window">×</button>
+  </div>
+  <p class="auth-intro">Your private investing research desk. Sign in once on this device; we'll remember your secure session and open the dashboard automatically next time.</p>
+  <div id="authLoading" class="auth-loading" role="status" aria-live="polite">Checking your saved sign-in…</div>
+  <div id="loginForm" class="hidden">
+   <label for="email">EMAIL ADDRESS</label>
+   <input id="email" name="email" type="email" autocomplete="username" inputmode="email" autocapitalize="none" spellcheck="false" placeholder="your@email.com">
+   <label for="password">PASSWORD</label>
+   <input id="password" name="password" type="password" autocomplete="current-password" placeholder="Your account password">
+   <div class="authbuttons"><button class="btn" id="passwordLogin" type="button">SIGN IN TO MY DESK</button><button class="btn" id="magicLogin" type="button">EMAIL SIGN-IN LINK</button></div>
+  </div>
+  <div id="signedIn" class="hidden">
+   <div class="info">Authenticated as <b id="userEmail"></b></div>
+   <div class="authbuttons"><button class="btn" id="refresh" type="button">RETRY PRIVATE DESK</button><button class="btn" id="signout" type="button">SIGN OUT</button></div>
+  </div>
+  <p id="authMessage" class="msg" role="status" aria-live="polite">No password is saved by Investing Intelligence HQ. Sign out any time from Account.</p>
+  <div class="auth-security"><span>SECURE SESSION</span><span>OWNER-ONLY ACCESS</span><span>NO AUTOMATIC TRADES</span></div>
+ </div>
+</div>
+<script type="module" src="./app.js?v=20261028-persistent-login-v1"></script>
 <script type="module" src="./opportunity.js?v=20261028-liquid-v1"></script>
 </body></html>
