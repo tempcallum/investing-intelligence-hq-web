@@ -759,6 +759,7 @@ function addResearchTicker(ticker){
  setSymbol(ticker);
  $('journalSummary').textContent=ticker+' added to your research watchlist and selected. No trading action has been taken.';
 }
+let companyBySymbol=new Map();
 function journalCard(r,full=false){
  const box=document.createElement('div');box.className='panel';box.style.padding='13px';
  const head=document.createElement('div');head.style.display='flex';head.style.justifyContent='space-between';
@@ -789,6 +790,24 @@ function journalCard(r,full=false){
    why.textContent='Data warnings: '+codes.map(x=>String(x).toLowerCase().replaceAll('_',' ')).join('; ');
    box.append(why);
  }
+ const sec=companyBySymbol.get(r.symbol);
+ const note=document.createElement('div');note.className='tiny';note.style.marginTop='8px';
+ if(!sec){
+   note.textContent='Company check: queued or not yet available · NO TRADE';
+ }else{
+   const checked=sec.checked_at?dateUK(sec.checked_at):'unknown time';
+   note.textContent='SEC '+String(sec.source_status||'UNVERIFIED').replaceAll('_',' ')+
+     ' · '+(sec.latest_filing_form?String(sec.latest_filing_form)+' filed '+String(sec.latest_filing_date||'date unknown'):'No verified recent filing')+
+     ' · '+(sec.recent_disclosure_needs_review?'RECENT DISCLOSURE — HUMAN REVIEW':'Earnings/news unverified')+
+     ' · checked '+checked+' · NO TRADE';
+   if(sec.recent_disclosure_needs_review)note.className+=' warning';
+   const url=sec.latest_filing_url;
+   if(typeof url==='string'&&url.startsWith('https://www.sec.gov/Archives/edgar/')){
+     const link=document.createElement('a');link.textContent=' · Read SEC filing ↗';
+     link.href=url;link.target='_blank';link.rel='noopener noreferrer';note.append(link);
+   }
+ }
+ box.append(note);
  const actions=document.createElement('div');actions.style.marginTop='10px';
  const add=document.createElement('button');add.className='secondary';add.type='button';
  add.textContent=watchlist.includes(r.symbol)?'SELECT FOR RESEARCH':'ADD TO RESEARCH WATCHLIST';
@@ -809,6 +828,8 @@ async function refreshJournal(){
    const data=await alpacaGet('journal',session);
    if(journalRequest!==reqId)return;
    const status=data.scanner||{},records=Array.isArray(data.entries)?data.entries:[];
+   companyBySymbol=new Map((Array.isArray(data.company_checks)?data.company_checks:[]).
+     filter(x=>x&&typeof x.symbol==='string').map(x=>[x.symbol,x]));
    $('discoveryState').textContent=String(status.last_state||'NOT TESTED').replaceAll('_',' ');
    $('discoveryDetail').textContent='Last attempt '+dateUK(status.last_attempt_at)+
      ' · screener source updated '+dateUK(status.source_updated_at)+
@@ -819,9 +840,11 @@ async function refreshJournal(){
    $('journalRecords').textContent=String(records.length);
    $('journalMeasured').textContent=String(records.filter(x=>x.outcome_state==='MEASURED').length);
    $('journalPending').textContent=String(records.filter(x=>x.outcome_state==='PENDING').length);
+   const companyState=String(data.company_scanner?.last_state||'NOT RUN').replaceAll('_',' ');
    $('journalSummary').textContent=records.length?
-     'Showing up to 100 recent observations, including rejected candidates. No trades were placed.':
-     'No discovery records yet. The screener has not been verified during the next live US session.';
+     'Showing up to 100 recorded observations, including rejected candidates. Company SEC checks: '+
+       companyState+'; at most two new symbols are checked per run. No trades were placed.':
+     'No discovery records yet. SEC company enrichment runs independently once candidates arrive.';
    const candidates=$('discoveryCandidates');candidates.replaceChildren();
    const unique=new Map();
    for(const record of records){if(!unique.has(record.symbol))unique.set(record.symbol,record);}
