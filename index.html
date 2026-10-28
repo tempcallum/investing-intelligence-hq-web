@@ -422,6 +422,26 @@ body{background:var(--bg)}.shell{max-width:1330px;padding-top:18px}
 <div class="workspace" style="margin-top:0"><section class="panel"><div class="phead"><b>RISK CONTROL / AUDIT LOG</b><span>RESTRICTED</span></div><div class="pbody stack"><div class="line"><span>Trading enabled</span><b class="green" id="riskEnabled">NO</b></div><div class="line"><span>Live orders</span><b>UNSUPPORTED</b></div><div class="line"><span>Confirmed journal entries</span><b id="auditEntries">—</b></div><div class="line"><span>Alpaca</span><b>UNLINKED</b></div><div class="info" id="riskDetails">Authenticated journal entries are visible only to the enrolled owner. Never assume trading is enabled based on the appearance of this screen.</div></div></section><section class="panel"><div class="phead"><b>SECURITY BOUNDARIES</b><span>V1</span></div><div class="pbody stack"><div class="info">Public market interface; private portfolio and trading state gated behind Supabase authentication and single-owner approval. No brokerage credentials in GitHub or the browser.</div><div class="locked">A separate website origin is recommended before considering real-money integrations.</div></div></section></div></section>
 <section id="view-discover" class="view hidden">
  <div class="workspace" style="margin-top:0">
+<section class="panel">
+ <div class="phead"><b>OPPORTUNITY RADAR · NEXT-SESSION SHORTLIST</b><span>RESEARCH · NO ORDERS</span></div>
+ <div class="pbody stack">
+  <div class="info">Separate from the extreme top-gainers scan, this scanner follows an established US-share universe and selected social discoveries every 15 minutes when the paper broker reports regular trading hours. It distinguishes early opportunities, unconfirmed watch candidates, genuinely risky shares and gaps in IEX data. <b>A research score is not a probability of profit.</b></div>
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+   <div><div class="signal">SCANNER STATUS</div><div class="bigstat" id="oppState">NOT YET VERIFIED</div></div>
+   <button class="btn" id="oppRefresh" type="button">REFRESH SHORTLIST ↻</button>
+  </div>
+  <div class="tiny mono" id="oppMeta">Last scheduled scan and recorded source timestamps will appear here.</div>
+  <div class="metricrow">
+   <div class="metric"><div class="k">CHECKED</div><div class="v" id="oppChecked">—</div></div>
+   <div class="metric"><div class="k">STUDY SETUPS</div><div class="v" id="oppSetups">—</div></div>
+   <div class="metric"><div class="k">WATCHING</div><div class="v" id="oppWatching">—</div></div>
+  </div>
+  <div class="signal">RANKED CANDIDATES · BEST AVAILABLE EVIDENCE FIRST</div>
+  <div id="oppCandidates" class="stack"><div class="locked">Awaiting the first regular-session scan. Candidates and profit forecasts will never be invented.</div></div>
+  <div class="locked">STUDY SETUP means a hypothetical 2:1 target/stop illustration using no more than £35 per position, with a 2.5% suggested price invalidation level. This is <b>not a forecast</b> and stops can slip or gap. Earnings and live news remain unverified. No broker paper or live orders can be submitted from this screen. The separate £100/£80 strategy ledger is not yet an active execution limit.</div>
+ </div>
+</section>
+
   <section class="panel">
    <div class="phead"><b>MARKET-WIDE MOMENTUM DISCOVERY</b><span>OWNER · RESEARCH ONLY</span></div>
    <div class="pbody stack">
@@ -558,5 +578,6 @@ body{background:var(--bg)}.shell{max-width:1330px;padding-top:18px}
 <footer class="bottom">IIHQ · INDEPENDENT RESEARCH WORKSTATION · PAPER MODE<br>MARKET DATA: ALPACA IEX · PARTIAL US EXCHANGE COVERAGE · VIRTUAL BALANCES IN USD</footer>
 </main>
 <div class="overlay hidden" id="authOverlay" role="dialog" aria-modal="true" aria-labelledby="authTitle"><div class="dialog"><div style="display:flex;align-items:center;justify-content:space-between"><h2 id="authTitle">Authorised account access</h2><button class="close" id="authClose" aria-label="Close login">×</button></div><p>Sign in only when you need private portfolio details. Public market research requires no account.</p><div id="loginForm"><label for="email">EMAIL</label><input id="email" type="email" autocomplete="email" placeholder="your@email.com"><label for="password">PASSWORD</label><input id="password" type="password" autocomplete="current-password" placeholder="Supabase Auth password"><div class="authbuttons"><button class="btn" id="passwordLogin">SIGN IN</button><button class="btn" id="magicLogin">EMAIL SIGN-IN LINK</button></div></div><div id="signedIn" class="hidden"><div class="info">Authenticated as <b id="userEmail"></b></div><div class="authbuttons"><button class="btn" id="refresh">REFRESH PRIVATE DESK</button><button class="btn" id="signout">SIGN OUT</button></div></div><p id="authMessage" class="msg">Your Supabase administration login is separate from this dashboard user. Create an Auth user in the Investing HQ project first.</p></div></div>
-<script type="module" src="./app.js?v=20261028-evidence-v1"></script>
+<script type="module" src="./app.js?v=20261028-opportunity-v1"></script>
+<script type="module" src="./opportunity.js?v=20261028-liquid-v1"></script>
 </body></html>
