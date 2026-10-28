@@ -3,6 +3,7 @@ import {createClient} from 'https://esm.sh/@supabase/supabase-js@2.95.0';
 const BASE='https://ziuvbhwurlplpgjvnwwu.supabase.co';
 const KEY='sb_publishable_DwjlTvNC2g6302A5T_8Z5Q_yGqANv_-';
 const URL=BASE+'/functions/v1/iihq-opportunity-radar?action=overview';
+const VIRTUAL_URL=BASE+'/functions/v1/iihq-virtual-strategy?action=overview';
 // Read the same browser-persistent owner session as the main desk.
 // This client only reads research; the main desk manages token auto-refresh.
 const auth=createClient(BASE,KEY,{auth:{persistSession:true,
@@ -111,3 +112,78 @@ setInterval(()=>{
  if(!document.hidden&&!el('view-discover')?.classList.contains('hidden')&&Date.now()-lastUpdated>75000)
   refresh().catch(()=>{});
 },30000);
+
+
+// Read-only view of actual simulation ledger. All order-like logic lives on
+// the server and is restricted to database-only virtual positions.
+let virtualLoading=false;
+const money=n=>n===null||n===undefined||!Number.isFinite(Number(n))?'—':
+ new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP'}).format(Number(n));
+function virtualPositionCard(r){
+ const item=document.createElement('div');item.className='panel';item.style.padding='12px';
+ const heading=document.createElement('b');
+ heading.textContent=String(r.symbol||'?')+' · '+String(r.status||'UNKNOWN')+' · VIRTUAL ONLY';
+ item.append(heading);
+ const info=document.createElement('div');info.className='tiny';info.style.marginTop='6px';
+ const opened=uk(r.entry_at);
+ info.textContent='Simulation entry '+opened+
+   ' · £ invested '+money(r.stake_gbp)+
+   ' · illustrative entry $'+num(r.entry_effective_usd)+
+   (r.status==='CLOSED'?
+    ' · exit '+uk(r.exit_at)+' · realised virtual outcome '+money(r.realised_gbp)+
+    ' · reason '+String(r.exit_reason||'UNKNOWN'):
+    ' · marked GBP value '+money(r.current_value_gbp)+' at '+uk(r.last_mark_at));
+ item.append(info);return item;
+}
+async function refreshVirtualStrategy(){
+ if(virtualLoading||!el('virtualPositions'))return;
+ virtualLoading=true;el('virtualRefresh').disabled=true;
+ try{
+  const {data:{session}}=await auth.auth.getSession();
+  if(!session)throw Error('LOGIN_REQUIRED');
+  const r=await fetch(VIRTUAL_URL,{method:'GET',cache:'no-store',
+   headers:{Authorization:'Bearer '+session.access_token}});
+  if(!r.ok)throw Error('LEDGER_UNAVAILABLE');
+  const payload=await r.json(),a=payload.account||{},rows=Array.isArray(payload.positions)?payload.positions:[];
+  if(payload.mode!=='SIMULATION_ONLY'||payload.broker_order_route!==false)throw Error('INVALID_LEDGER_MODE');
+  el('virtualState').textContent=a.paused_reason?'PAUSED · '+String(a.paused_reason).replaceAll('_',' '):
+   a.enabled===true?'AUTONOMOUS VIRTUAL MODE ON':'SIMULATOR OFF';
+  el('virtualEquity').textContent=money(a.equity_gbp);
+  el('virtualCash').textContent=money(a.cash_gbp);
+  el('virtualOpen').textContent=String(rows.filter(x=>x.status==='OPEN').length);
+  el('virtualPause').disabled=a.enabled!==true;
+  el('virtualMessage').textContent='Last marked '+uk(a.last_mark_at)+
+   ' · GBP risk pause £80 · simulated virtual entries only'+
+   (a.last_error?' · '+String(a.last_error).replaceAll('_',' '):'')+
+   ' · NEVER Alpaca orders';
+  const root=el('virtualPositions');root.replaceChildren();
+  for(const p of rows.slice(0,8))root.append(virtualPositionCard(p));
+  if(!rows.length)root.textContent='No simulated positions yet. No order has been made.';
+ }catch(e){
+  el('virtualState').textContent='LOCKED OR UNAVAILABLE';
+  el('virtualEquity').textContent='—';el('virtualCash').textContent='—';el('virtualOpen').textContent='—';
+  el('virtualMessage').textContent='A verified authorised owner session is required. No virtual results are inferred.';
+  el('virtualPositions').textContent='No authenticated virtual transactions available.';
+ }finally{virtualLoading=false;el('virtualRefresh').disabled=false}
+}
+el('virtualRefresh')?.addEventListener('click',()=>refreshVirtualStrategy().catch(()=>{}));
+el('virtualPause')?.addEventListener('click',async()=>{
+ const button=el('virtualPause');if(button.disabled)return;
+ button.disabled=true;
+ try{
+  const {data:{session}}=await auth.auth.getSession();
+  if(!session)throw Error('LOGIN_REQUIRED');
+  const r=await fetch(BASE+'/functions/v1/iihq-virtual-strategy?action=pause',{
+   method:'POST',headers:{Authorization:'Bearer '+session.access_token,
+    'Content-Type':'application/json'},body:'{}',cache:'no-store'});
+  if(!r.ok)throw Error('PAUSE_FAILED');
+  el('virtualMessage').textContent='New virtual entries paused. Existing simulated positions will still be managed.';
+  await refreshVirtualStrategy();
+ }catch(_){
+  el('virtualMessage').textContent='Pause could not be verified. Please retry.';
+  button.disabled=false;
+ }
+});
+setInterval(()=>{
+ if(!document.hidden&&!el('view-discover')?.classList.contains('hidden'))refreshVirtualStrategy().catch(()=>{});
+},90000);
