@@ -10,7 +10,7 @@ const $=id=>document.getElementById(id);
 
 const DEFAULT=['AAPL','MSFT','NVDA','AMZN','META','GOOGL','TSLA','JPM','SPY','QQQ'];
 const NAMES={AAPL:'Apple Inc.',MSFT:'Microsoft Corporation',NVDA:'NVIDIA Corporation',AMZN:'Amazon.com Inc.',META:'Meta Platforms Inc.',GOOGL:'Alphabet Inc.',TSLA:'Tesla Inc.',JPM:'JPMorgan Chase & Co.',SPY:'SPDR S&P 500 ETF',QQQ:'Invesco QQQ Trust',AMD:'Advanced Micro Devices',PLTR:'Palantir Technologies','BRK.B':'Berkshire Hathaway'};
-const TABS={markets:'Market overview',research:'Company intelligence',strategies:'Strategy laboratory',paper:'Paper trading desk',risk:'Risk & audit'};
+const TABS={markets:'Market overview',research:'Company intelligence',strategies:'Strategy laboratory',paper:'Paper trading desk',risk:'Risk & audit',ops:'Market opening checks'};
 let selected='AAPL',signedIn=false,ownerApproved=false;
 const autoScannerMap=new Map();
 function symbols(){
@@ -77,6 +77,7 @@ for(const button of $('nav').querySelectorAll('button')){
    $('viewTitle').textContent=TABS[tab];
    if(tab==='strategies'&&ownerApproved)refreshSavedScans().catch(()=>{});
    if(tab==='risk'&&ownerApproved)refreshReadiness().catch(()=>{});
+   if(tab==='ops')refreshOpeningCheck().catch(()=>{});
  });
 }
 function updateClocks(){
@@ -554,3 +555,35 @@ async function refreshReadiness(){
 }
 $('refreshRisk').addEventListener('click',()=>refreshReadiness().catch(()=>{}));
 setInterval(()=>{if(ownerApproved&&!document.hidden&&!$('view-risk').classList.contains('hidden'))refreshReadiness().catch(()=>{})},60000);
+
+let opsRequestId=0;
+function opsTime(t){
+ if(!t)return '—';
+ const d=new Date(t);
+ return Number.isFinite(d.getTime())?d.toLocaleString('en-GB',{timeZone:'Europe/London',dateStyle:'medium',timeStyle:'short'})+' UK':'—';
+}
+async function refreshOpeningCheck(){
+ if(!ownerApproved){$('opsMarket').textContent='OWNER LOGIN REQUIRED';$('opsMessage').textContent='Sign in to access the private infrastructure checks.';overlay(true);return;}
+ const {data:{session}}=await client.auth.getSession();if(!session)return;
+ const id=++opsRequestId;$('opsRefresh').disabled=true;$('opsMarket').textContent='CHECKING…';
+ try{
+  const data=await alpacaGet('preflight',session);
+  if(id!==opsRequestId)return;
+  const clock=data.broker_market_clock,heartbeat=data.scheduler||{};
+  $('opsMarket').textContent=clock?(clock.is_open?'US MARKET OPEN':'US MARKET CLOSED'):'CLOCK UNAVAILABLE';
+  $('opsNextOpen').textContent=clock?'NEXT OPEN '+opsTime(clock.next_open)+' · CLOSE '+opsTime(clock.next_close):'Broker session timing unavailable';
+  $('opsHeartbeat').textContent=heartbeat.recent_successful_contact?'RECENT / CONFIRMED':'STALE OR NOT OBSERVED';
+  $('opsLastRun').textContent=opsTime(heartbeat.last_invocation_at);
+  $('opsOutcome').textContent=String(heartbeat.last_state||'NOT OBSERVED')+' · '+String(heartbeat.last_reason||'—');
+  $('opsSymbols').textContent=String(heartbeat.last_scanned_count??'—')+' passed, '+String(heartbeat.last_error_count??'—')+' failed';
+  $('opsBroker').textContent=data.broker_paper_account_connected?'PAPER CONNECTED':'UNVERIFIED';
+  $('opsStored').textContent=data.stored_results==null?'UNKNOWN':String(data.stored_results);
+  $('opsOrders').textContent=data.paper_orders_enabled?'UNEXPECTED FLAG — STOP':'OFF / NO ORDER ROUTE';
+  $('opsMessage').textContent=heartbeat.recent_successful_contact&&data.broker_paper_account_connected&&!data.paper_orders_enabled?
+   'Infrastructure is responding. Await actual market-hours price data; no execution approval is given.':
+   'One or more operational checks needs attention. Do not infer that market data or scanning is ready.';
+ }catch(_){if(id!==opsRequestId)return;$('opsMarket').textContent='CHECK FAILED';$('opsHeartbeat').textContent='UNVERIFIED';$('opsMessage').textContent='Could not verify the backend. No readiness claim is possible.';}
+ finally{if(id===opsRequestId)$('opsRefresh').disabled=false;}
+}
+$('opsRefresh').addEventListener('click',()=>refreshOpeningCheck().catch(()=>{}));
+setInterval(()=>{if(ownerApproved&&!document.hidden&&!$('view-ops').classList.contains('hidden'))refreshOpeningCheck().catch(()=>{});},60000);
