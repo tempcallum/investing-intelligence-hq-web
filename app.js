@@ -11,7 +11,7 @@ const $=id=>document.getElementById(id);
 
 const DEFAULT=['AAPL','MSFT','NVDA','AMZN','META','GOOGL','TSLA','JPM','SPY','QQQ'];
 const NAMES={AAPL:'Apple Inc.',MSFT:'Microsoft Corporation',NVDA:'NVIDIA Corporation',AMZN:'Amazon.com Inc.',META:'Meta Platforms Inc.',GOOGL:'Alphabet Inc.',TSLA:'Tesla Inc.',JPM:'JPMorgan Chase & Co.',SPY:'SPDR S&P 500 ETF',QQQ:'Invesco QQQ Trust',AMD:'Advanced Micro Devices',PLTR:'Palantir Technologies','BRK.B':'Berkshire Hathaway'};
-const TABS={markets:'Market overview',research:'Company intelligence',strategies:'Strategy laboratory',paper:'Paper trading desk',risk:'Risk & audit',ops:'Market opening checks',discover:'Opportunity discovery & journal'};
+const TABS={overview:'Your portfolio',control:'Market data control centre',markets:'Market overview',research:'Company intelligence',strategies:'Strategy laboratory',paper:'Paper trading desk',risk:'Risk & audit',ops:'Market opening checks',discover:'Opportunity discovery & journal'};
 let selected='AAPL',signedIn=false,ownerApproved=false;
 const autoScannerMap=new Map();
 function symbols(){
@@ -81,6 +81,10 @@ for(const button of $('nav').querySelectorAll('button')){
    if(tab==='risk'&&ownerApproved)refreshReadiness().catch(()=>{});
    if(tab==='ops')refreshOpeningCheck().catch(()=>{});
    if(tab==='discover')refreshJournal().catch(()=>{});
+   if(tab==='overview'&&ownerApproved)refreshPortfolio().catch(()=>{});
+   if(tab==='control'&&ownerApproved)refreshDataControl().catch(()=>{});
+   const more=$('moreNav');if(more)more.open=false;
+   for(const b of $('nav').querySelectorAll('button'))b.setAttribute('aria-current',b===button?'page':'false');
  });
 }
 function updateClocks(){
@@ -109,7 +113,7 @@ async function syncAuth(){
   $('loginForm').classList.toggle('hidden',signedIn);
   $('signedIn').classList.toggle('hidden',!signedIn);
   $('accountOpen').textContent=signedIn?'ACCOUNT / SIGNED IN':'ACCOUNT / LOCKED';
-  if(!session){ownerApproved=false;$('instrumentFeedTag').textContent='IEX / LOCKED';$('paperEquity').textContent='ACCOUNT LOCKED';$('paperMessage').textContent='Sign in to inspect private trading status. Alpaca is not connected.';return}
+  if(!session){$('ovBalance').textContent='Sign in';$('ovDay').textContent='Private portfolio data is locked.';$('ovStatus').textContent='Sign in to see your Alpaca paper account.';ownerApproved=false;$('instrumentFeedTag').textContent='IEX / LOCKED';$('paperEquity').textContent='ACCOUNT LOCKED';$('paperMessage').textContent='Sign in to inspect private trading status. Alpaca is not connected.';return}
   $('userEmail').textContent=session.user.email||'Authenticated user';
   await refreshDesk(session.access_token);
 }
@@ -140,6 +144,7 @@ async function refreshDesk(token){
    note('Private owner access verified. No trade execution is enabled.');
    await refreshAlpaca();
    await refreshSavedScans();
+   if(!$('view-overview').classList.contains('hidden'))await refreshPortfolio();
  }catch(_){
    note('Could not load private data service. Check the connection and try again.',true);
  }
@@ -824,3 +829,169 @@ async function refreshJournal(){
 }
 $('refreshJournal').addEventListener('click',()=>refreshJournal().catch(()=>{}));
 setInterval(()=>{if(ownerApproved&&!document.hidden&&!$('view-discover').classList.contains('hidden'))refreshJournal().catch(()=>{})},60000);
+
+
+// PORTFOLIO OVERVIEW: read-only Alpaca PAPER brokerage account.
+// Never combine with the separate Robinhood screenshot or mistake margin for cash.
+let overviewPeriod='1M',portfolioRequest=0,portfolioBusy=false;
+const ovMoney=v=>v===null||v===undefined||v===''||!Number.isFinite(Number(v))?'—':
+  new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(Number(v));
+const ovTime=t=>{if(!t)return '—';const d=new Date(t);return Number.isFinite(d.getTime())?
+  d.toLocaleString('en-GB',{timeZone:'Europe/London',dateStyle:'medium',timeStyle:'short'})+' UK':'—'};
+function ovChartDraw(points){
+ const target=$('ovChart');target.replaceChildren();
+ const samples=Array.isArray(points)?points.filter(p=>p&&Number.isFinite(Number(p.equity))&&
+  Number(p.equity)>=0&&Number.isFinite(Number(p.timestamp))).sort((a,b)=>a.timestamp-b.timestamp):[];
+ if(samples.length<2){target.textContent='Not enough Alpaca paper-equity history for this period.';return}
+ const vals=samples.map(x=>Number(x.equity)),lo=Math.min(...vals),hi=Math.max(...vals);
+ const x0=12,x1=748,y0=210,y1=12,span=Math.max(1,hi-lo);
+ const xy=vals.map((n,i)=>[x0+(x1-x0)*i/(vals.length-1),y0-(n-lo)/span*(y0-y1)]);
+ const ns='http://www.w3.org/2000/svg';
+ const svg=document.createElementNS(ns,'svg');svg.setAttribute('viewBox','0 0 760 225');
+ svg.setAttribute('role','img');svg.setAttribute('aria-label','Alpaca paper equity chart, '+overviewPeriod);
+ const polygon=document.createElementNS(ns,'polygon');
+ polygon.setAttribute('points',x0+','+y0+' '+xy.map(p=>p.join(',')).join(' ')+
+  ' '+x1+','+y0);polygon.setAttribute('fill','rgba(102,203,147,.12)');svg.append(polygon);
+ const line=document.createElementNS(ns,'polyline');
+ line.setAttribute('points',xy.map(p=>p.join(',')).join(' '));
+ line.setAttribute('fill','none');line.setAttribute('stroke',vals.at(-1)>=vals[0]?'#81e6af':'#ff9b98');
+ line.setAttribute('stroke-width','2.8');line.setAttribute('stroke-linejoin','round');svg.append(line);
+ const dot=document.createElementNS(ns,'circle');dot.setAttribute('cx',xy.at(-1)[0]);
+ dot.setAttribute('cy',xy.at(-1)[1]);dot.setAttribute('r','4');
+ dot.setAttribute('fill','#e1fff1');svg.append(dot);target.append(svg);
+}
+function ovPositionsDraw(rows,verified){
+ const root=$('ovPositions');root.replaceChildren();
+ $('ovPositionCount').textContent=verified?String(rows.length)+' HELD':'UNVERIFIED';
+ if(!verified){root.textContent='Paper holdings could not be retrieved. No holdings assumed.';return}
+ if(!rows.length){root.textContent='No open paper positions yet. The virtual account is currently in cash.';return}
+ for(const p of rows){
+  const item=document.createElement('div');item.className='ov-position';
+  const left=document.createElement('div'),right=document.createElement('div');right.className='right';
+  const sym=document.createElement('strong');sym.textContent=String(p.symbol||'—');
+  const qty=document.createElement('small');qty.textContent=String(p.qty??'—')+' shares · '+String(p.side||'long')+' · paper';
+  left.append(sym,qty);
+  const val=document.createElement('div');val.textContent=ovMoney(p.market_value);
+  const gain=document.createElement('small');gain.textContent='Open P&L '+ovMoney(p.unrealized_pl);
+  gain.className=Number(p.unrealized_pl)<0?'ov-bad':'ov-good';
+  right.append(val,gain);item.append(left,right);root.append(item);
+ }
+}
+async function refreshPortfolio(){
+ if(!ownerApproved){
+  $('ovStatus').textContent='Owner sign-in is required for private paper account details.';return;
+ }
+ if(portfolioBusy)return;
+ const {data:{session}}=await client.auth.getSession();if(!session)return;
+ portfolioBusy=true;const id=++portfolioRequest;$('ovRefresh').disabled=true;
+ $('ovStatus').textContent='Reading Alpaca paper account, open positions and equity history…';
+ try{
+  const payload=await alpacaGet('portfolio',session,'&period='+encodeURIComponent(overviewPeriod));
+  if(id!==portfolioRequest)return;
+  const a=payload.account||{};
+  $('ovBalance').textContent=ovMoney(a.equity);
+  const day=payload.day_change_estimate_usd;
+  $('ovDay').className='ov-change '+(day===null?'ov-muted':Number(day)<0?'ov-bad':'ov-good');
+  $('ovDay').textContent=day===null?'Daily movement unavailable':
+    (Number(day)>=0?'+':'')+ovMoney(day)+' ('+
+    (Number(payload.day_change_estimate_pct)>=0?'+':'')+
+    (Number.isFinite(Number(payload.day_change_estimate_pct))?
+      Number(payload.day_change_estimate_pct).toFixed(2)+'%':'—')+') versus previous close*';
+  $('ovSnapshotTime').textContent='ALPACA PAPER · VERIFIED '+ovTime(payload.fetched_at)+' · USD';
+  $('ovCash').textContent=ovMoney(a.cash);$('ovBuying').textContent=ovMoney(a.buying_power);
+  $('ovInvested').textContent=payload.positions_verified?ovMoney(payload.invested_market_value):'Unverified';
+  ovPositionsDraw(Array.isArray(payload.positions)?payload.positions:[],payload.positions_verified===true);
+  ovChartDraw(payload.history?.points);
+  $('ovStatus').textContent='Read-only virtual portfolio. *Daily movement is account equity minus prior-close equity and can be affected by balance adjustments. No orders are enabled.';
+ }catch(_){
+  if(id!==portfolioRequest)return;
+  $('ovBalance').textContent='Unavailable';$('ovDay').textContent='Could not verify the paper portfolio';
+  $('ovSnapshotTime').textContent='ALPACA PAPER DATA UNAVAILABLE';
+  $('ovCash').textContent='—';$('ovInvested').textContent='—';$('ovBuying').textContent='—';
+  ovPositionsDraw([],false);ovChartDraw([]);
+  $('ovStatus').textContent='Broker account request failed. This dashboard never invents portfolio balances.';
+ }finally{if(id===portfolioRequest){portfolioBusy=false;$('ovRefresh').disabled=false}}
+}
+$('ovRefresh').addEventListener('click',()=>refreshPortfolio().catch(()=>{}));
+for(const button of $('ovRanges').querySelectorAll('button')){
+ button.addEventListener('click',()=>{
+  if(!['1D','1W','1M','3M','1A'].includes(button.dataset.period))return;
+  overviewPeriod=button.dataset.period;
+  for(const b of $('ovRanges').querySelectorAll('button'))b.classList.toggle('active',b===button);
+  if(ownerApproved)refreshPortfolio().catch(()=>{});
+ });
+}
+$('ovOpenPaper').addEventListener('click',()=>{
+ const button=$('nav').querySelector('[data-tab="paper"]');if(button)button.click();
+});
+setInterval(()=>{
+ if(ownerApproved&&!document.hidden&&!$('view-overview').classList.contains('hidden'))
+  refreshPortfolio().catch(()=>{});
+},60000);
+
+// DATA CONTROL CENTRE: independent read-only broker and authenticated cloud status.
+let controlBusy=false;
+function ctrlItem(title,subtitle,status,bad=false){
+ const tile=document.createElement('article');tile.className='health-tile';
+ const h=document.createElement('b');h.textContent=title;
+ const s=document.createElement('p');s.textContent=subtitle;
+ const code=document.createElement('div');code.className='health-code '+(bad?'ov-bad':'ov-good');
+ code.textContent=status;tile.append(h,code,s);return tile;
+}
+async function refreshDataControl(){
+ if(!ownerApproved){$('ctrlVerdict').textContent='Owner sign-in required.';return}
+ if(controlBusy)return;
+ const {data:{session}}=await client.auth.getSession();if(!session)return;
+ controlBusy=true;$('ctrlRefresh').disabled=true;$('ctrlMarket').textContent='CHECKING…';
+ try{
+  const data=await alpacaGet('control',session);
+  const market=data.market||{};
+  $('ctrlMarket').textContent=!market.clock_verified?'BROKER CLOCK UNAVAILABLE':market.is_open?'US MARKET OPEN':'US MARKET CLOSED';
+  $('ctrlUpdated').textContent='Verified '+ovTime(data.fetched_at)+' · Next open '+ovTime(market.next_open);
+  $('ctrlFresh').textContent=String(data.summary?.recent_iex_quotes??'—')+'/'+String(data.summary?.sources_checked??5);
+  $('ctrlScans').textContent=String(data.summary?.saved_signals??'—');
+  $('ctrlMissing').textContent=String(data.summary?.missing_database_sources??'—');
+  const scans=$('ctrlScanners');scans.replaceChildren();
+  for(const item of data.scanners||[]){
+   const status=String(item.status||'UNKNOWN');
+   const description='Last check '+ovTime(item.last_run_at)+' · '+String(item.last_state||'NOT OBSERVED')+
+     (item.last_reason?' · '+String(item.last_reason).replaceAll('_',' ').toLowerCase():'');
+   scans.append(ctrlItem(String(item.name||'Scanner'),description,status,status==='WARNING'||status==='STALE'));
+  }
+  if(!(data.scanners||[]).length)scans.textContent='No scanner heartbeat verified.';
+  const bars=$('ctrlSignals');bars.replaceChildren();
+  for(const item of data.signal_checks||[]){
+   const recorded=ovTime(item.bar_time),checked=ovTime(item.checked_at);
+   const warning=!['BUY','HOLD'].includes(item.status);
+   bars.append(ctrlItem(String(item.symbol||'?'),
+      'Completed candle '+recorded+' · Last checked '+checked,
+      String(item.status||'UNKNOWN').replaceAll('_',' '),warning));
+  }
+  if(!(data.signal_checks||[]).length)bars.textContent='No completed signal records yet; no signal quality assumed.';
+  const quotes=$('ctrlQuotes');quotes.replaceChildren();
+  for(const q of data.quotes||[]){
+    const desc='Last trade '+ovTime(q.latest_trade_at)+' · Quote '+ovTime(q.latest_quote_at)+
+      ' · age '+(q.age_seconds==null?'unknown':Math.round(q.age_seconds/60)+' min')+' · IEX only';
+    const state=String(q.state||'UNKNOWN');
+    quotes.append(ctrlItem(String(q.symbol),desc,state,
+      ['STALE','MISSING','UNAVAILABLE','LAGGING'].includes(state)));
+  }
+  if(!(data.quotes||[]).length)quotes.textContent='No verified quote records.';
+  const unhealthy=!(market.clock_verified)||(data.scanners||[]).some(s=>s.status!=='ACTIVE')||
+    Number(data.summary?.missing_database_sources||0)>0||
+    (market.is_open&&(data.quotes||[]).some(q=>q.state!=='RECENT'));
+  $('ctrlVerdict').textContent=unhealthy?
+    'SOME CHECKS REQUIRE ATTENTION. Check scanner status, feed age and missing data. No trades are authorised.':
+    'RESEARCH INFRASTRUCTURE RESPONDING. Market closed and closed-session quote ages are normal. No trade execution is authorised.';
+ }catch(_){
+  $('ctrlMarket').textContent='CHECK FAILED';
+  $('ctrlVerdict').textContent='The private control service did not respond. Do not assume any feed is healthy.';
+  $('ctrlUpdated').textContent='No verified status received';
+  $('ctrlFresh').textContent='—';$('ctrlScans').textContent='—';$('ctrlMissing').textContent='—';
+ }finally{controlBusy=false;$('ctrlRefresh').disabled=false}
+}
+$('ctrlRefresh').addEventListener('click',()=>refreshDataControl().catch(()=>{}));
+setInterval(()=>{
+ if(ownerApproved&&!document.hidden&&!$('view-control').classList.contains('hidden'))
+  refreshDataControl().catch(()=>{});
+},60000);
