@@ -499,6 +499,19 @@ body{background:var(--bg)}.shell{max-width:1330px;padding-top:18px}
 <div class="tiny mono" id="marketConfirmStatus">No independent market check loaded.</div><div id="marketEvidence" class="stack">Market evidence awaiting verification.</div>
 <div class="locked">Market momentum is not a trading prediction or order authorisation. Corporate earnings, breaking news and whole-market prices are not fully verified. Virtual paper orders remain disabled.</div></div></section>
 <section class="panel">
+ <div class="phead"><b>IS SOCIAL MOMENTUM ACTUALLY WORKING?</b><span>PROSPECTIVE STUDY</span></div>
+ <div class="pbody stack">
+  <div class="info">Compares shares with strong social attention + confirmed momentum against weaker-social shares with momentum, using subsequently measured IEX prices. Where available, results are adjusted for SPY over the same period. No hypothetical fills are claimed.</div>
+  <div class="bigstat" id="studyStatus">EVIDENCE NOT YET LOADED</div>
+  <div id="studyFreshness" class="tiny mono">Private research results require owner login.</div>
+  <div class="metricrow"><div class="metric"><div class="k">INITIAL VALID CHECKS</div><div id="studyValid" class="v">—</div></div>
+  <div class="metric"><div class="k">FOLLOW-UP PRICES</div><div id="studyMeasured" class="v">—</div></div>
+  <div class="metric"><div class="k">SPY-ADJUSTED RESULTS</div><div id="studyBenchmarked" class="v">—</div></div></div>
+  <div id="studyGroups" class="stack"><div class="locked">No comparative research results loaded.</div></div>
+  <div class="locked" id="studyConclusion">The study is observational and needs many more forward outcomes across different trading days. A higher return in a small group does not establish predictive skill. No real or paper trading orders can be authorised here.</div>
+ </div>
+</section>
+<section class="panel">
       <div class="phead"><b>HOW IT WORKS</b><span>DATA PROVENANCE</span></div>
       <div class="pbody stack">
         <div class="line"><span>Public source</span><b>Bluesky · partial search results</b></div>
@@ -545,5 +558,5 @@ body{background:var(--bg)}.shell{max-width:1330px;padding-top:18px}
 <footer class="bottom">IIHQ · INDEPENDENT RESEARCH WORKSTATION · PAPER MODE<br>MARKET DATA: ALPACA IEX · PARTIAL US EXCHANGE COVERAGE · VIRTUAL BALANCES IN USD</footer>
 </main>
 <div class="overlay hidden" id="authOverlay" role="dialog" aria-modal="true" aria-labelledby="authTitle"><div class="dialog"><div style="display:flex;align-items:center;justify-content:space-between"><h2 id="authTitle">Authorised account access</h2><button class="close" id="authClose" aria-label="Close login">×</button></div><p>Sign in only when you need private portfolio details. Public market research requires no account.</p><div id="loginForm"><label for="email">EMAIL</label><input id="email" type="email" autocomplete="email" placeholder="your@email.com"><label for="password">PASSWORD</label><input id="password" type="password" autocomplete="current-password" placeholder="Supabase Auth password"><div class="authbuttons"><button class="btn" id="passwordLogin">SIGN IN</button><button class="btn" id="magicLogin">EMAIL SIGN-IN LINK</button></div></div><div id="signedIn" class="hidden"><div class="info">Authenticated as <b id="userEmail"></b></div><div class="authbuttons"><button class="btn" id="refresh">REFRESH PRIVATE DESK</button><button class="btn" id="signout">SIGN OUT</button></div></div><p id="authMessage" class="msg">Your Supabase administration login is separate from this dashboard user. Create an Auth user in the Investing HQ project first.</p></div></div>
-<script type="module" src="./app.js?v=20261028-social-market-v1"></script>
+<script type="module" src="./app.js?v=20261028-evidence-v1"></script>
 </body></html>
