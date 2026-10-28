@@ -11,7 +11,7 @@ const $=id=>document.getElementById(id);
 
 const DEFAULT=['AAPL','MSFT','NVDA','AMZN','META','GOOGL','TSLA','JPM','SPY','QQQ'];
 const NAMES={AAPL:'Apple Inc.',MSFT:'Microsoft Corporation',NVDA:'NVIDIA Corporation',AMZN:'Amazon.com Inc.',META:'Meta Platforms Inc.',GOOGL:'Alphabet Inc.',TSLA:'Tesla Inc.',JPM:'JPMorgan Chase & Co.',SPY:'SPDR S&P 500 ETF',QQQ:'Invesco QQQ Trust',AMD:'Advanced Micro Devices',PLTR:'Palantir Technologies','BRK.B':'Berkshire Hathaway'};
-const TABS={markets:'Market overview',research:'Company intelligence',strategies:'Strategy laboratory',paper:'Paper trading desk',risk:'Risk & audit',ops:'Market opening checks'};
+const TABS={markets:'Market overview',research:'Company intelligence',strategies:'Strategy laboratory',paper:'Paper trading desk',risk:'Risk & audit',ops:'Market opening checks',discover:'Opportunity discovery & journal'};
 let selected='AAPL',signedIn=false,ownerApproved=false;
 const autoScannerMap=new Map();
 function symbols(){
@@ -80,6 +80,7 @@ for(const button of $('nav').querySelectorAll('button')){
    if(tab==='research'&&!fredLoaded)loadFredOverview().catch(()=>{});
    if(tab==='risk'&&ownerApproved)refreshReadiness().catch(()=>{});
    if(tab==='ops')refreshOpeningCheck().catch(()=>{});
+   if(tab==='discover')refreshJournal().catch(()=>{});
  });
 }
 function updateClocks(){
@@ -714,3 +715,112 @@ async function loadFredOverview(){
  }finally{if(id===fredRequest){fredLoading=false;$('fredRefresh').disabled=false;}}
 }
 $('fredRefresh').addEventListener('click',()=>loadFredOverview().catch(()=>{}));
+
+
+// Private, audited, READ-ONLY discovery journal. A button only adds a symbol
+// to the local RESEARCH watchlist. It can never submit a broker order.
+let journalRequest=0;
+const dateUK=t=>{if(!t)return '—';const d=new Date(t);
+ return Number.isFinite(d.getTime())?d.toLocaleString('en-GB',{timeZone:'Europe/London',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})+' UK':'—'};
+function journalNumber(n,unit=''){
+ return n===null||n===undefined||!Number.isFinite(Number(n))?'—':Number(n).toFixed(2)+unit;
+}
+function journalLine(left,right){
+ const x=document.createElement('div');x.className='line';
+ const l=document.createElement('span');l.textContent=left;
+ const r=document.createElement('b');r.textContent=right;x.append(l,r);return x;
+}
+function addResearchTicker(ticker){
+ if(!/^[A-Z][A-Z0-9.]{0,7}$/.test(ticker))return;
+ if(!watchlist.includes(ticker)){
+   if(watchlist.length>=30){
+     $('journalSummary').textContent='Research watchlist has 30 symbols. Remove an existing symbol before adding more.';
+     return;
+   }
+   watchlist.push(ticker);saveSymbols();
+ }
+ setSymbol(ticker);
+ $('journalSummary').textContent=ticker+' added to your research watchlist and selected. No trading action has been taken.';
+}
+function journalCard(r,full=false){
+ const box=document.createElement('div');box.className='panel';box.style.padding='13px';
+ const head=document.createElement('div');head.style.display='flex';head.style.justifyContent='space-between';
+ head.style.alignItems='center';head.style.gap='8px';head.style.flexWrap='wrap';
+ const symbol=document.createElement('b');symbol.style.fontSize='15px';
+ symbol.textContent=String(r.symbol||'?')+(r.screener_rank?' · screener #'+r.screener_rank:'');
+ const state=document.createElement('b');
+ const passed=r.quality_state==='REVIEW';
+ state.className=passed?'green':'warning';
+ state.textContent=passed?'DATA CHECKS PASS · NOT A TRADE':'REJECTED · REVIEW RISK';
+ head.append(symbol,state);
+ box.append(head);
+ const metrics=document.createElement('div');metrics.style.marginTop='9px';metrics.className='tiny';
+ metrics.textContent='Screener move '+journalNumber(r.screener_change_pct,'%')+
+   ' · IEX last price '+journalNumber(r.observed_iex_price,' USD')+
+   ' · observed '+dateUK(r.observed_iex_trade_at);
+ box.append(metrics);
+ if(full){
+   const follow=document.createElement('div');follow.className='tiny';follow.style.marginTop='8px';
+   follow.textContent='Later price (~30 min): '+(r.outcome_state==='MEASURED'?
+     journalNumber(r.outcome_30m_pct,'%')+' observed '+dateUK(r.outcome_30m_trade_at):
+     r.outcome_state==='PENDING'?'not yet measured':'data unavailable');
+   box.append(follow);
+ }
+ const codes=Array.isArray(r.reason_codes)?r.reason_codes:[];
+ if(codes.length){
+   const why=document.createElement('div');why.className='tiny';why.style.marginTop='7px';
+   why.textContent='Data warnings: '+codes.map(x=>String(x).toLowerCase().replaceAll('_',' ')).join('; ');
+   box.append(why);
+ }
+ const actions=document.createElement('div');actions.style.marginTop='10px';
+ const add=document.createElement('button');add.className='secondary';add.type='button';
+ add.textContent=watchlist.includes(r.symbol)?'SELECT FOR RESEARCH':'ADD TO RESEARCH WATCHLIST';
+ add.addEventListener('click',()=>addResearchTicker(String(r.symbol||'')));
+ actions.append(add);box.append(actions);
+ return box;
+}
+async function refreshJournal(){
+ if(!ownerApproved){
+   $('discoveryState').textContent='OWNER LOGIN REQUIRED';
+   $('discoveryDetail').textContent='Sign in to read the private market-wide research journal.';
+   overlay(true);return;
+ }
+ const {data:{session}}=await client.auth.getSession();if(!session)return;
+ const reqId=++journalRequest;$('refreshJournal').disabled=true;
+ $('discoveryDetail').textContent='Reading saved research history from the protected database…';
+ try{
+   const data=await alpacaGet('journal',session);
+   if(journalRequest!==reqId)return;
+   const status=data.scanner||{},records=Array.isArray(data.entries)?data.entries:[];
+   $('discoveryState').textContent=String(status.last_state||'NOT TESTED').replaceAll('_',' ');
+   $('discoveryDetail').textContent='Last attempt '+dateUK(status.last_attempt_at)+
+     ' · screener source updated '+dateUK(status.source_updated_at)+
+     (status.last_reason?' · '+String(status.last_reason).replaceAll('_',' '):'');
+   $('discoveryCount').textContent=String(status.candidates_reviewed??0);
+   $('discoveryQualified').textContent=String(status.quality_passed??0);
+   $('discoveryRejected').textContent=String(status.quality_rejected??0);
+   $('journalRecords').textContent=String(records.length);
+   $('journalMeasured').textContent=String(records.filter(x=>x.outcome_state==='MEASURED').length);
+   $('journalPending').textContent=String(records.filter(x=>x.outcome_state==='PENDING').length);
+   $('journalSummary').textContent=records.length?
+     'Showing up to 100 recent observations, including rejected candidates. No trades were placed.':
+     'No discovery records yet. The screener has not been verified during the next live US session.';
+   const candidates=$('discoveryCandidates');candidates.replaceChildren();
+   const unique=new Map();
+   for(const record of records){if(!unique.has(record.symbol))unique.set(record.symbol,record);}
+   const first=[...unique.values()].slice(0,8);
+   if(!first.length){
+     const empty=document.createElement('div');empty.className='locked';
+     empty.textContent='No market-wide candidates recorded. The scanner may not have run during market hours, or the screener may be unavailable on the free plan.';
+     candidates.append(empty);
+   }else for(const row of first)candidates.append(journalCard(row,false));
+   const target=$('journalList');target.replaceChildren();
+   for(const record of records.slice(0,25))target.append(journalCard(record,true));
+   if(!records.length)target.textContent='No saved research decisions or outcomes yet.';
+ }catch(_){
+   $('discoveryState').textContent='JOURNAL UNAVAILABLE';
+   $('discoveryDetail').textContent='Could not read the owner-only scanner record. No results have been inferred.';
+ }finally{if(reqId===journalRequest)$('refreshJournal').disabled=false}
+}
+$('refreshJournal').addEventListener('click',()=>refreshJournal().catch(()=>{}));
+setInterval(()=>{if(ownerApproved&&!document.hidden&&!$('view-discover').classList.contains('hidden'))refreshJournal().catch(()=>{})},60000);
