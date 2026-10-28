@@ -20,6 +20,7 @@ const DEFAULT=['AAPL','MSFT','NVDA','AMZN','META','GOOGL','TSLA','JPM','SPY','QQ
 const NAMES={AAPL:'Apple Inc.',MSFT:'Microsoft Corporation',NVDA:'NVIDIA Corporation',AMZN:'Amazon.com Inc.',META:'Meta Platforms Inc.',GOOGL:'Alphabet Inc.',TSLA:'Tesla Inc.',JPM:'JPMorgan Chase & Co.',SPY:'SPDR S&P 500 ETF',QQQ:'Invesco QQQ Trust',AMD:'Advanced Micro Devices',PLTR:'Palantir Technologies','BRK.B':'Berkshire Hathaway'};
 const TABS={overview:'Your portfolio',control:'Market data control centre',markets:'Market overview',research:'Company intelligence',strategies:'Strategy laboratory',paper:'Paper trading desk',risk:'Risk & audit',ops:'Market opening checks',discover:'Opportunity discovery & journal'};
 let ciRequest=0; // Initialised before initial setSymbol() calls the hoisted research UI reset.
+let chartTimeframe='5Min';
 let selected='AAPL',signedIn=false,ownerApproved=false;
 const autoScannerMap=new Map();
 function symbols(){
@@ -249,7 +250,7 @@ async function loadMarketData(){
   try{
     const [snapshot,bars]=await Promise.all([
       alpacaGet('market',session,'&symbols='+encodeURIComponent(syms.join(','))),
-      alpacaGet('bars',session,'&symbol='+encodeURIComponent(selected))
+      alpacaGet('bars',session,'&symbol='+encodeURIComponent(selected)+'&timeframe='+encodeURIComponent(chartTimeframe))
     ]);
     if(request!==marketRequestId)return;
     $('feedBadge').textContent='IEX SOURCE CONNECTED';
@@ -284,7 +285,7 @@ async function loadMarketData(){
     if(metrics[0])metrics[0].textContent=dayChange==null?'—':dayChange.toFixed(2)+'% (IEX)';
     if(metrics[1])metrics[1].textContent=quote?.day_volume==null?'—':Number(quote.day_volume).toLocaleString('en-GB');
     if(metrics[2])metrics[2].textContent='—';
-    drawBars(bars.bars||[],bars.symbol);
+    drawBars(bars.bars||[],bars.symbol,bars.timeframe||chartTimeframe,bars.fetched_at);
   }catch(_){
     if(request!==marketRequestId)return;
     $('feedBadge').textContent='IEX FEED UNAVAILABLE';
@@ -293,7 +294,7 @@ async function loadMarketData(){
     $('watchFooter').textContent='Watchlist stored on this device · market-data service unavailable';
     $('quoteSource').textContent='IEX market quotes are currently unavailable. No prices are simulated.';
     document.querySelector('.instrument .pricebig').textContent='— USD';
-    drawBars([],selected);
+    drawBars([],selected,chartTimeframe);
   }
 }
 
@@ -311,28 +312,145 @@ $('refreshQuotes').addEventListener('click',()=>{
  loadMarketData().catch(()=>{});
 });
 
-function drawBars(bars,symbol){
-  const chart=$('priceChart');clearNode(chart);
-  const good=bars.filter(b=>Number.isFinite(Number(b.c))&&b.c>0&&b.t).slice(-100);
-  if(good.length<2){const t=document.createElement('div');t.textContent='No verified five-minute IEX bars available for this period.';t.className='muted m12';chart.append(t);return}
-  const values=good.map(b=>Number(b.c)),lo=Math.min(...values),hi=Math.max(...values);
-  const range=Math.max(hi-lo,hi*0.002,0.001);
-  const width=620,height=220,points=values.map((v,i)=>{
-    const x=20+i/(values.length-1)*(width-40),y=height-18-((v-lo)/range)*(height-36);
-    return x.toFixed(1)+','+y.toFixed(1);
-  }).join(' ');
-  const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');
-  svg.setAttribute('viewBox','0 0 '+width+' '+height);svg.setAttribute('role','img');
-  svg.setAttribute('aria-label',symbol+' recent five minute IEX price bars');
+// OHLCV chart is a pure presentation of completed broker IEX bars.
+// Never manufacture candles, fill time gaps or use a visual SMA as a trade signal.
+function drawBars(bars,symbol,timeframe=chartTimeframe,verifiedAt){
+  const target=$('priceChart');target.replaceChildren();
+  const label=$('candleInfo'),intervals={'1Min':60000,'5Min':300000,
+    '15Min':900000,'1Hour':3600000,'1Day':86400000};
+  const duration=intervals[timeframe]||300000;
+  $('candleAxisTF').textContent='IEX · '+timeframe.toUpperCase()+' · COMPLETED';
+  let discarded=0;
+  const validated=[];
+  for(const b of Array.isArray(bars)?bars:[]){
+    const stamp=Date.parse(b?.t||''),o=Number(b?.o),h=Number(b?.h),
+      l=Number(b?.l),c=Number(b?.c),v=Number(b?.v);
+    if(!Number.isFinite(stamp)||!Number.isFinite(o)||!Number.isFinite(h)||
+       !Number.isFinite(l)||!Number.isFinite(c)||!Number.isFinite(v)||
+       o<=0||h<=0||l<=0||c<=0||v<0||
+       h<Math.max(o,c,l)||l>Math.min(o,c,h)){
+      discarded++;continue;
+    }
+    validated.push({t:stamp,o,h,l,c,v});
+  }
+  validated.sort((a,b)=>a.t-b.t);
+  const dedup=[];
+  for(const candle of validated){
+    if(dedup.length&&dedup[dedup.length-1].t===candle.t){discarded++;continue}
+    dedup.push(candle);
+  }
+  const view=dedup.slice(-65);
+  if(view.length<2){
+    const message=document.createElement('div');
+    message.style.padding='24px 15px';message.className='tiny';
+    message.textContent='No complete verified '+timeframe+' IEX candles available. Refresh after market data arrives. No synthetic bars are shown.';
+    target.append(message);
+    label.textContent='Insufficient OHLCV bars · source: Alpaca IEX only · no trading signal.';
+    $('candleAxisStart').textContent='NO BARS';$('candleAxisEnd').textContent='—';return;
+  }
+  const stampString=t=>new Date(t).toLocaleString('en-GB',{
+    timeZone:'America/New_York',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',
+    hour12:false})+' NY';
+  $('candleAxisStart').textContent=stampString(view[0].t);
+  $('candleAxisEnd').textContent=stampString(view.at(-1).t);
+  const priceHigh=Math.max(...view.map(x=>x.h)),priceLow=Math.min(...view.map(x=>x.l)),
+    spread=Math.max(priceHigh-priceLow,priceHigh*0.001,0.001),
+    top=19,bottom=235,vTop=258,vBottom=330,W=860,left=12,right=90,
+    chartWidth=W-left-right,candleWidth=Math.max(3,Math.min(13,chartWidth/view.length*0.67));
+  const high=priceHigh+spread*0.10,low=Math.max(0,priceLow-spread*0.10),
+    priceY=price=>bottom-(price-low)/(high-low)*(bottom-top),
+    volumeMax=Math.max(...view.map(x=>x.v),1),
+    xx=i=>left+(i+0.5)*chartWidth/view.length;
+  const ns='http://www.w3.org/2000/svg';
+  const element=(tag,attrs={})=>{
+    const e=document.createElementNS(ns,tag);
+    for(const [k,v] of Object.entries(attrs))e.setAttribute(k,String(v));
+    return e;
+  };
+  const svg=element('svg',{viewBox:'0 0 '+W+' 345',role:'img',
+    'aria-label':symbol+' '+timeframe+' completed IEX Japanese candlesticks and volumes'});
   svg.style.width='100%';svg.style.height='100%';
-  const line=document.createElementNS(ns,'polyline');
-  line.setAttribute('fill','none');line.setAttribute('stroke','#87e4b5');
-  line.setAttribute('stroke-width','2.6');line.setAttribute('stroke-linecap','round');line.setAttribute('stroke-linejoin','round');
-  line.setAttribute('points',points);svg.append(line);chart.append(svg);
-  const info=document.createElement('small');info.textContent='IEX 5-minute bars · Last sample '+new Date(good.at(-1).t).toLocaleString('en-GB');
-  info.style.position='absolute';info.style.left='12px';info.style.bottom='5px';info.style.background='#10191bcc';chart.append(info);
+  for(let z=0;z<5;z++){
+    const value=low+(high-low)*z/4,y=priceY(value);
+    svg.append(element('line',{x1:left,y1:y,x2:W-67,y2:y,stroke:'#27403e','stroke-width':0.75}));
+    const labelText=element('text',{x:W-57,y:y+4,fill:'#9fb9b0','font-size':12,
+      'font-family':'ui-monospace,monospace'});
+    labelText.textContent=value.toFixed(value<10?3:2);svg.append(labelText);
+  }
+  svg.append(element('line',{x1:left,x2:W-right+9,y1:vTop-7,y2:vTop-7,stroke:'#335047','stroke-width':1}));
+  const volumeTitle=element('text',{x:left+3,y:vTop+10,fill:'#769b8f','font-size':11});
+  volumeTitle.textContent='VOLUME';svg.append(volumeTitle);
+  const up='#80dfaa',down='#ef8d87';
+  for(let i=0;i<view.length;i++){
+    const b=view[i],x=xx(i),rising=b.c>=b.o,color=rising?up:down,
+      yHigh=priceY(b.h),yLow=priceY(b.l),yOpen=priceY(b.o),yClose=priceY(b.c),
+      vHeight=(b.v/volumeMax)*(vBottom-vTop-13);
+    const volume=element('rect',{x:x-candleWidth/2,y:vBottom-vHeight,
+      width:candleWidth,height:Math.max(0.6,vHeight),fill:color,opacity:0.48});
+    svg.append(volume);
+    const group=element('g',{role:'group','aria-label':symbol+' '+stampString(b.t)+
+      ' open '+b.o+' high '+b.h+' low '+b.l+' close '+b.c+' volume '+b.v});
+    const wick=element('line',{x1:x,x2:x,y1:yHigh,y2:yLow,stroke:color,'stroke-width':1.5});
+    const body=element('rect',{x:x-candleWidth/2,y:Math.min(yOpen,yClose),
+      width:candleWidth,height:Math.max(1.8,Math.abs(yOpen-yClose)),fill:color});
+    const hit=element('rect',{x:x-chartWidth/view.length/2,
+      y:top,width:chartWidth/view.length,height:vBottom-top,fill:'transparent'});
+    const title=element('title');title.textContent=symbol+' '+stampString(b.t)+
+      ' | O '+b.o+' H '+b.h+' L '+b.l+' C '+b.c+
+      ' | IEX volume '+b.v.toLocaleString('en-GB');group.append(wick,body,hit,title);
+    hit.addEventListener('click',()=>{label.textContent=title.textContent+' · IEX only · '+timeframe;});
+    svg.append(group);
+  }
+  // Price overlays use observed completed closes. Gaps are not filled.
+  for(const [length,color] of [[9,'#efc77d'],[21,'#8ab6ed']]){
+    if(view.length<length)continue;
+    const points=[];
+    for(let i=length-1;i<view.length;i++){
+      const window=view.slice(i-length+1,i+1);
+      // Show an SMA point only where the requested window's candles are contiguous.
+      // Weekend and overnight gaps are allowed for daily/regular-session charts,
+      // but no synthetic intraday candles are inserted.
+      let gap=false;
+      if(timeframe!=='1Day'){
+        for(let j=1;j<window.length;j++){
+          const delta=window[j].t-window[j-1].t;
+          if(delta>duration*1.5&&delta<6*3600000){gap=true;break}
+        }
+      }
+      if(gap){if(points.length>1){svg.append(element('polyline',
+        {points:points.join(' '),fill:'none',stroke:color,'stroke-width':2,
+         'stroke-linejoin':'round'}));}points.length=0;continue}
+      const avg=window.reduce((total,k)=>total+k.c,0)/length;
+      points.push(xx(i).toFixed(2)+','+priceY(avg).toFixed(2));
+    }
+    if(points.length>1)svg.append(element('polyline',{
+      points:points.join(' '),fill:'none',stroke:color,'stroke-width':2,'stroke-linejoin':'round'}));
+  }
+  target.append(svg);
+  let gapCount=0;
+  if(timeframe!=='1Day')for(let i=1;i<view.length;i++){
+    const elapsed=view[i].t-view[i-1].t;
+    if(elapsed>duration*1.5&&elapsed<6*3600000)gapCount++;
+  }
+  label.textContent=view.length+' verified '+timeframe+' candles · latest '+stampString(view.at(-1).t)+
+    ' · '+(gapCount?gapCount+' possible missing IEX intervals · ':'')+
+    (discarded?discarded+' invalid/duplicate bars excluded · ':'')+
+    'tap a candle for OHLCV · single-exchange IEX only';
 }
-
+for(const btn of $('candleTimeframes').querySelectorAll('button')){
+  btn.addEventListener('click',()=>{
+    const next=btn.dataset.tf;
+    if(!['1Min','5Min','15Min','1Hour','1Day'].includes(next)||next===chartTimeframe)return;
+    chartTimeframe=next;marketRequestId++;
+    for(const b of $('candleTimeframes').querySelectorAll('button')){
+      const active=b===btn;b.classList.toggle('active',active);
+      b.setAttribute('aria-pressed',String(active));
+    }
+    $('candleInfo').textContent='Loading completed '+next+' candles from Alpaca IEX…';
+    $('priceChart').textContent='Loading verified candlesticks…';
+    if(ownerApproved&&marketTabVisible())loadMarketData().catch(()=>{});
+  });
+}
 
 // Server-side strategy uses the same private tested signal engine.
 // This frontend never requests or submits an order.
