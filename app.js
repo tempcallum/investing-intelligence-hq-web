@@ -906,7 +906,7 @@ async function refreshPortfolio(){
  }
  if(portfolioBusy)return;
  const {data:{session}}=await client.auth.getSession();if(!session)return;
- portfolioBusy=true;const id=++portfolioRequest;$('ovRefresh').disabled=true;
+ portfolioBusy=true;const id=++portfolioRequest,periodAtStart=overviewPeriod;$('ovRefresh').disabled=true;
  $('ovStatus').textContent='Reading Alpaca paper account, open positions and equity history…';
  try{
   const payload=await alpacaGet('portfolio',session,'&period='+encodeURIComponent(overviewPeriod));
@@ -915,11 +915,11 @@ async function refreshPortfolio(){
   $('ovBalance').textContent=ovMoney(a.equity);
   const day=payload.day_change_estimate_usd;
   $('ovDay').className='ov-change '+(day===null?'ov-muted':Number(day)<0?'ov-bad':'ov-good');
+  const pct=payload.day_change_estimate_pct;
   $('ovDay').textContent=day===null?'Daily movement unavailable':
     (Number(day)>=0?'+':'')+ovMoney(day)+' ('+
-    (Number(payload.day_change_estimate_pct)>=0?'+':'')+
-    (Number.isFinite(Number(payload.day_change_estimate_pct))?
-      Number(payload.day_change_estimate_pct).toFixed(2)+'%':'—')+') versus previous close*';
+    (pct===null||pct===undefined||!Number.isFinite(Number(pct))?'—':
+      (Number(pct)>=0?'+':'')+Number(pct).toFixed(2)+'%')+') versus previous close*';
   $('ovSnapshotTime').textContent='ALPACA PAPER · VERIFIED '+ovTime(payload.fetched_at)+' · USD';
   $('ovCash').textContent=ovMoney(a.cash);$('ovBuying').textContent=ovMoney(a.buying_power);
   $('ovInvested').textContent=payload.positions_verified?ovMoney(payload.invested_market_value):'Unverified';
@@ -933,7 +933,7 @@ async function refreshPortfolio(){
   $('ovCash').textContent='—';$('ovInvested').textContent='—';$('ovBuying').textContent='—';
   ovPositionsDraw([],false);ovChartDraw([]);
   $('ovStatus').textContent='Broker account request failed. This dashboard never invents portfolio balances.';
- }finally{if(id===portfolioRequest){portfolioBusy=false;$('ovRefresh').disabled=false}}
+ }finally{if(id===portfolioRequest){portfolioBusy=false;$('ovRefresh').disabled=false;if(periodAtStart!==overviewPeriod)refreshPortfolio().catch(()=>{});}}
 }
 $('ovRefresh').addEventListener('click',()=>refreshPortfolio().catch(()=>{}));
 for(const button of $('ovRanges').querySelectorAll('button')){
@@ -1002,6 +1002,7 @@ async function refreshDataControl(){
   if(!(data.quotes||[]).length)quotes.textContent='No verified quote records.';
   const unhealthy=!(market.clock_verified)||(data.scanners||[]).some(s=>s.status!=='ACTIVE')||
     Number(data.summary?.missing_database_sources||0)>0||
+    (data.quotes||[]).some(q=>['UNAVAILABLE','MISSING'].includes(q.state))||
     (market.is_open&&(data.quotes||[]).some(q=>q.state!=='RECENT'));
   $('ctrlVerdict').textContent=unhealthy?
     'SOME CHECKS REQUIRE ATTENTION. Check scanner status, feed age and missing data. No trades are authorised.':
