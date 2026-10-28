@@ -113,7 +113,7 @@ async function syncAuth(){
   $('loginForm').classList.toggle('hidden',signedIn);
   $('signedIn').classList.toggle('hidden',!signedIn);
   $('accountOpen').textContent=signedIn?'ACCOUNT / SIGNED IN':'ACCOUNT / LOCKED';
-  if(!session){$('ovBalance').textContent='Sign in';$('ovDay').textContent='Private portfolio data is locked.';$('ovStatus').textContent='Sign in to see your Alpaca paper account.';ownerApproved=false;$('instrumentFeedTag').textContent='IEX / LOCKED';$('paperEquity').textContent='ACCOUNT LOCKED';$('paperMessage').textContent='Sign in to inspect private trading status. Alpaca is not connected.';return}
+  if(!session){clearPrivateAccountUI();ownerApproved=false;$('instrumentFeedTag').textContent='IEX / LOCKED';$('paperEquity').textContent='ACCOUNT LOCKED';$('paperMessage').textContent='Sign in to inspect private trading status. Alpaca is not connected.';return}
   $('userEmail').textContent=session.user.email||'Authenticated user';
   await refreshDesk(session.access_token);
 }
@@ -122,7 +122,7 @@ async function refreshDesk(token){
    const r=await fetch(API,{headers:{Authorization:'Bearer '+token},cache:'no-store'});
    const data=await r.json();
    if(!r.ok){
-     ownerApproved=false;
+     clearPrivateAccountUI();ownerApproved=false;
      if(data.error==='OWNER_NOT_ENROLLED'){
        note('Your login succeeded, but this account is not yet enrolled as the authorised owner. Ask ChatGPT to complete the owner check.');
        $('paperEquity').textContent='OWNER APPROVAL PENDING';
@@ -146,6 +146,7 @@ async function refreshDesk(token){
    await refreshSavedScans();
    if(!$('view-overview').classList.contains('hidden'))await refreshPortfolio();
  }catch(_){
+   clearPrivateAccountUI();ownerApproved=false;
    note('Could not load private data service. Check the connection and try again.',true);
  }
 }
@@ -830,6 +831,28 @@ async function refreshJournal(){
 $('refreshJournal').addEventListener('click',()=>refreshJournal().catch(()=>{}));
 setInterval(()=>{if(ownerApproved&&!document.hidden&&!$('view-discover').classList.contains('hidden'))refreshJournal().catch(()=>{})},60000);
 
+
+// Clear every private value when logged out or if the owner check fails.
+function clearPrivateAccountUI(){
+ for(const id of ['ovCash','ovInvested','ovBuying','ctrlFresh','ctrlScans','ctrlMissing'])$(id).textContent='—';
+ $('ovBalance').textContent='Sign in';
+ $('ovDay').textContent='Private account figures are locked';
+ $('ovSnapshotTime').textContent='Sign in to load verified broker information.';
+ $('ovStatus').textContent='Owner sign-in is required. No brokerage orders can be placed.';
+ $('ovPositionCount').textContent='—';
+ $('ovPositions').textContent='No private portfolio data shown until authorised.';
+ $('ovChart').textContent='Historical portfolio data is locked.';
+ $('ctrlScanners').textContent='Sign in to view protected scanner health.';
+ $('ctrlSignals').textContent='Sign in to view protected research checks.';
+ $('ctrlQuotes').textContent='Sign in to view quote freshness.';
+ $('ctrlMarket').textContent='NOT CHECKED';
+ $('ctrlUpdated').textContent='Source timestamps require login.';
+ $('ctrlVerdict').textContent='Owner login required.';
+ $('paperEquity').textContent='ACCOUNT LOCKED';
+ $('paperMessage').textContent='Sign in to retrieve the Alpaca paper account.';
+ $('positionBlotter').textContent='Account details locked.';
+ $('orderBlotter').textContent='Account details locked.';
+}
 
 // PORTFOLIO OVERVIEW: read-only Alpaca PAPER brokerage account.
 // Never combine with the separate Robinhood screenshot or mistake margin for cash.
