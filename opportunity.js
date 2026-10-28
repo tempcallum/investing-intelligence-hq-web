@@ -3,7 +3,9 @@ import {createClient} from 'https://esm.sh/@supabase/supabase-js@2.95.0';
 const BASE='https://ziuvbhwurlplpgjvnwwu.supabase.co';
 const KEY='sb_publishable_DwjlTvNC2g6302A5T_8Z5Q_yGqANv_-';
 const URL=BASE+'/functions/v1/iihq-opportunity-radar?action=overview';
-const auth=createClient(BASE,KEY,{auth:{persistSession:true,storage:window.sessionStorage,
+// Read the same browser-persistent owner session as the main desk.
+// This client only reads research; the main desk manages token auto-refresh.
+const auth=createClient(BASE,KEY,{auth:{persistSession:true,
  autoRefreshToken:false,detectSessionInUrl:false}});
 const el=id=>document.getElementById(id);
 let working=false,lastUpdated=0;
