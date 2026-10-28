@@ -462,6 +462,28 @@ body{background:var(--bg)}.shell{max-width:1330px;padding-top:18px}
 </section>
 
   <section class="panel">
+ <div class="phead"><b>£100 AUTONOMOUS VIRTUAL STRATEGY</b><span>SIMULATION ONLY · NO BROKER ORDERS</span></div>
+ <div class="pbody stack">
+  <div class="info">When enabled, the system may <b>enter and close simulated positions automatically</b> based on fresh market observations. This is a separate £100 virtual GBP ledger — not the $100,000 Alpaca paper balance, and not real trading. No individual approval is required for its simulated transactions.</div>
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+   <div><div class="signal">VIRTUAL EXECUTION STATUS</div><div class="bigstat" id="virtualState">VERIFYING</div></div>
+   <div class="actions">
+    <button class="btn" id="virtualRefresh" type="button">REFRESH VIRTUAL LEDGER ↻</button>
+    <button class="secondary" id="virtualPause" type="button">PAUSE NEW VIRTUAL ENTRIES</button>
+   </div>
+  </div>
+  <div class="metricrow">
+   <div class="metric"><div class="k">LEDGER EQUITY</div><div class="v" id="virtualEquity">—</div></div>
+   <div class="metric"><div class="k">AVAILABLE CASH</div><div class="v" id="virtualCash">—</div></div>
+   <div class="metric"><div class="k">OPEN POSITIONS</div><div class="v" id="virtualOpen">—</div></div>
+  </div>
+  <div class="tiny mono" id="virtualMessage">Owner login and independent data sources required.</div>
+  <div class="signal">AUTONOMOUS SIMULATED POSITIONS</div>
+  <div class="stack" id="virtualPositions"><div class="locked">No verified virtual transaction records loaded.</div></div>
+  <div class="locked">Hard-coded opening limits: £100 starting cash, at most £35 per position, no more than two open positions, at most one new entry per New York trading day. Position exits can be triggered by an illustrative 2.5% stop, 5% target, time limit or session close. The ledger pauses new entries when marked equity is £80 or lower; <b>that floor is not a guarantee against larger losses</b>. Currency uses published indicative ECB reference rates, not a broker conversion quote. Simulated spread/slippage and stop prices are not real fills.</div>
+ </div>
+</section>
+<section class="panel">
    <div class="phead"><b>EXTREME MOVERS · HIGH-RISK WATCH</b><span>SEPARATE FROM OPPORTUNITY RADAR</span></div>
    <div class="pbody stack">
     <div class="info">This is the high-volatility top-gainers feed, not a review of the entire US market. A rejected extreme mover does not mean every normal share is uninvestable. An independent cloud scanner queries Alpaca's broader US gainers list every 10 minutes during the regular session, then tests available IEX quotes, spreads, liquidity and tradability. Scanning access may depend on your Alpaca data entitlement.</div>
@@ -621,5 +643,5 @@ body{background:var(--bg)}.shell{max-width:1330px;padding-top:18px}
  </div>
 </div>
 <script type="module" src="./app.js?v=20261028-persistent-login-v1"></script>
-<script type="module" src="./opportunity.js?v=20261028-3lanes-v2"></script>
+<script type="module" src="./opportunity.js?v=20261028-auto-virtual-v1"></script>
 </body></html>
