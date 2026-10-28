@@ -8,6 +8,13 @@ const ALPACA_API=PROJECT_URL+'/functions/v1/iihq-alpaca-read?action=';
 const FRED_API=PROJECT_URL+'/functions/v1/iihq-fred?action=overview';
 const client=createClient(PROJECT_URL,PUBLISHABLE_KEY,{auth:{persistSession:true,storage:window.sessionStorage,autoRefreshToken:true,detectSessionInUrl:true}});
 const $=id=>document.getElementById(id);
+// Add-to-Home-Screen iPhone web-app support. Public assets only are cached by sw.js.
+if('serviceWorker' in navigator && location.protocol==='https:'){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(()=>{});
+  });
+}
+
 
 const DEFAULT=['AAPL','MSFT','NVDA','AMZN','META','GOOGL','TSLA','JPM','SPY','QQQ'];
 const NAMES={AAPL:'Apple Inc.',MSFT:'Microsoft Corporation',NVDA:'NVIDIA Corporation',AMZN:'Amazon.com Inc.',META:'Meta Platforms Inc.',GOOGL:'Alphabet Inc.',TSLA:'Tesla Inc.',JPM:'JPMorgan Chase & Co.',SPY:'SPDR S&P 500 ETF',QQQ:'Invesco QQQ Trust',AMD:'Advanced Micro Devices',PLTR:'Palantir Technologies','BRK.B':'Berkshire Hathaway'};
@@ -855,7 +862,7 @@ function clearPrivateAccountUI(){
 }
 
 // PORTFOLIO OVERVIEW: read-only Alpaca PAPER brokerage account.
-// Never combine with the separate Robinhood screenshot or mistake margin for cash.
+// Do not mix unconnected real-money accounts with the virtual Alpaca paper balance.
 let overviewPeriod='1M',portfolioRequest=0,portfolioBusy=false;
 const ovMoney=v=>v===null||v===undefined||v===''||!Number.isFinite(Number(v))?'—':
   new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(Number(v));
