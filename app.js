@@ -18,7 +18,7 @@ if('serviceWorker' in navigator && location.protocol==='https:'){
 
 const DEFAULT=['AAPL','MSFT','NVDA','AMZN','META','GOOGL','TSLA','JPM','SPY','QQQ'];
 const NAMES={AAPL:'Apple Inc.',MSFT:'Microsoft Corporation',NVDA:'NVIDIA Corporation',AMZN:'Amazon.com Inc.',META:'Meta Platforms Inc.',GOOGL:'Alphabet Inc.',TSLA:'Tesla Inc.',JPM:'JPMorgan Chase & Co.',SPY:'SPDR S&P 500 ETF',QQQ:'Invesco QQQ Trust',AMD:'Advanced Micro Devices',PLTR:'Palantir Technologies','BRK.B':'Berkshire Hathaway'};
-const TABS={overview:'Your portfolio',control:'Market data control centre',markets:'Market overview',research:'Company intelligence',strategies:'Strategy laboratory',paper:'Paper trading desk',risk:'Risk & audit',ops:'Market opening checks',discover:'Opportunity discovery & journal'};
+const TABS={overview:'Your portfolio',control:'Market data control centre',markets:'Market overview',research:'Company intelligence',strategies:'Strategy laboratory',paper:'Paper trading desk',risk:'Risk & audit',ops:'Market opening checks',discover:'Opportunity discovery & journal',social:'Social radar & unusual chatter'};
 let ciRequest=0; // Initialised before initial setSymbol() calls the hoisted research UI reset.
 let briefBusy=false,briefReports=[];
 let chartTimeframe='5Min';
@@ -94,6 +94,7 @@ for(const button of $('nav').querySelectorAll('button')){
    if(tab==='risk'&&ownerApproved)refreshReadiness().catch(()=>{});
    if(tab==='ops')refreshOpeningCheck().catch(()=>{});
    if(tab==='discover')refreshJournal().catch(()=>{});
+   if(tab==='social')refreshSocial().catch(()=>{});
    if(tab==='overview'&&ownerApproved)refreshPortfolio().catch(()=>{});
    if(tab==='overview'&&ownerApproved)refreshDailyBrief().catch(()=>{});
    if(tab==='control'&&ownerApproved)refreshDataControl().catch(()=>{});
@@ -988,9 +989,103 @@ $('refreshJournal').addEventListener('click',()=>refreshJournal().catch(()=>{}))
 setInterval(()=>{if(ownerApproved&&!document.hidden&&!$('view-discover').classList.contains('hidden'))refreshJournal().catch(()=>{})},60000);
 
 
+
+// SOCIAL RADAR: owner-only, sampled social evidence, never automatic broker orders.
+const SOCIAL_URL=PROJECT_URL+'/functions/v1/iihq-social-radar?action=overview';
+let socialBusy=false;
+function socialCard(record){
+ const shell=document.createElement('div');shell.className='panel';shell.style.padding='14px';
+ const top=document.createElement('div');top.style.display='flex';top.style.justifyContent='space-between';
+ top.style.alignItems='center';top.style.gap='10px';top.style.flexWrap='wrap';
+ const symbol=document.createElement('strong');symbol.style.fontSize='17px';
+ symbol.textContent=String(record.symbol||'—');
+ const state=document.createElement('b');
+ const status=String(record.attention_state||'UNVERIFIED');
+ state.className=status==='BURST'?'warning':status==='EARLY_INTEREST'?'green':'muted';
+ state.textContent=status==='BURST'?'ATTENTION BURST · RESEARCH':status==='EARLY_INTEREST'?'EARLY SOCIAL INTEREST':
+   'LOW SAMPLE / BASELINE BUILDING';
+ top.append(symbol,state);shell.append(top);
+ const provenance=document.createElement('div');provenance.className='tiny';provenance.style.marginTop='7px';
+ provenance.textContent=(record.selection_source==='SOCIAL_DISCOVERY'?'DISCOVERED IN SOCIAL FEED':record.selection_source==='RECENT_MOVER'?'RECENT MARKET MOVER':'TRACKED WATCH TICKER')+
+   ' · saved '+dateUK(record.scanned_at);
+ shell.append(provenance);
+ const metrics=document.createElement('div');metrics.className='tiny';metrics.style.marginTop='9px';
+ const count=Number(record.posts_seen)||0,authors=Number(record.unique_authors)||0;
+ metrics.textContent=count+' sampled posts · '+authors+' distinct authors · '+(Number(record.total_likes)||0)+' likes · '+
+  (Number(record.total_reposts)||0)+' reposts'+
+  (record.burst_multiple!==null&&record.burst_multiple!==undefined?' · '+Number(record.burst_multiple).toFixed(1)+'× prior sampled median':' · historical baseline pending');
+ shell.append(metrics);
+ const note=document.createElement('div');note.className='tiny';note.style.marginTop='6px';
+ note.textContent='Latest matching post '+dateUK(record.latest_post_at)+
+  ' · independent price/liquidity/earnings checks NOT COMPLETE · NO TRADE';
+ shell.append(note);
+ const actions=document.createElement('div');actions.className='actions';actions.style.marginTop='11px';
+ const research=document.createElement('button');research.type='button';research.className='secondary';
+ research.textContent='ADD / OPEN RESEARCH WATCHLIST';
+ research.addEventListener('click',()=>{
+  addResearchTicker(String(record.symbol||''));
+  const markets=document.querySelector('#nav button[data-tab="markets"]');if(markets)markets.click();
+ });
+ actions.append(research);
+ for(const x of (Array.isArray(record.examples)?record.examples:[]).slice(0,2)){
+  const url=String(x?.url||'');
+  if(!/^https:\/\/bsky\.app\/profile\/did%3A[A-Za-z0-9%._-]+\/post\/[A-Za-z0-9]+$/.test(url))continue;
+  const a=document.createElement('a');a.className='btn';a.textContent='SOURCE POST ↗';
+  a.href=url;a.target='_blank';a.rel='noopener noreferrer';actions.append(a);
+ }
+ shell.append(actions);
+ return shell;
+}
+async function refreshSocial(){
+ if(!ownerApproved){
+  $('socialState').textContent='OWNER SIGN-IN REQUIRED';
+  $('socialDetail').textContent='Only your authorised Investing HQ account can view saved observations.';
+  overlay(true);return;
+ }
+ if(socialBusy)return;
+ socialBusy=true;$('socialRefresh').disabled=true;
+ try{
+  const {data:{session}}=await client.auth.getSession();if(!session)throw Error('SESSION_UNAVAILABLE');
+  const reply=await fetch(SOCIAL_URL,{method:'GET',cache:'no-store',
+   headers:{Authorization:'Bearer '+session.access_token}});
+  const data=await reply.json();
+  if(!reply.ok)throw Error(data.error||'SOCIAL_DATA_UNAVAILABLE');
+  const runtime=data.scanner||{},latest=Array.isArray(data.latest)?data.latest:[];
+  $('socialState').textContent=String(runtime.last_state||'NOT RUN').replaceAll('_',' ');
+  $('socialDetail').textContent='Last scanner attempt '+dateUK(runtime.last_attempt_at)+
+   ' · SOURCE: BLUESKY PUBLIC SEARCH'+
+   (runtime.last_reason?' · '+String(runtime.last_reason).replaceAll('_',' '):'')+
+   ' · No market or order authority.';
+  $('socialCount').textContent=String(runtime.symbols_checked??0);
+  $('socialBurst').textContent=String(latest.filter(x=>x.attention_state==='BURST').length);
+  $('socialNew').textContent=String(runtime.new_discoveries??0);
+  const cards=$('socialCandidates');cards.replaceChildren();
+  const order={BURST:0,EARLY_INTEREST:1,INSUFFICIENT_HISTORY:2,THIN_SAMPLE:3};
+  latest.sort((a,b)=>(order[a.attention_state]??9)-(order[b.attention_state]??9)||
+   Number(b.posts_seen||0)-Number(a.posts_seen||0));
+  for(const record of latest.slice(0,12))cards.append(socialCard(record));
+  if(!latest.length){
+   const empty=document.createElement('div');empty.className='locked';
+   empty.textContent='No validated social source observations yet. '+String(runtime.last_reason||'Scheduled collection has not completed.');
+   cards.append(empty);
+  }
+ }catch(_){
+  $('socialState').textContent='SOURCE OR ACCESS UNAVAILABLE';
+  $('socialDetail').textContent='Social data could not be independently verified. Try again after the next scheduled scan.';
+  $('socialCount').textContent='—';$('socialBurst').textContent='—';$('socialNew').textContent='—';
+  $('socialCandidates').textContent='No social activity or trading opportunities are inferred during a source failure.';
+ }finally{socialBusy=false;$('socialRefresh').disabled=false}
+}
+$('socialRefresh').addEventListener('click',()=>refreshSocial().catch(()=>{}));
+setInterval(()=>{if(ownerApproved&&!document.hidden&&!$('view-social').classList.contains('hidden'))refreshSocial().catch(()=>{})},90000);
+
 // Clear every private value when logged out or if the owner check fails.
 function clearPrivateAccountUI(){
  briefReports=[];
+ $('socialState').textContent='OWNER SIGN-IN REQUIRED';
+ $('socialDetail').textContent='Sign in to read private social research.';
+ $('socialCandidates').textContent='No private social records shown.';
+ $('socialCount').textContent='—';$('socialBurst').textContent='—';$('socialNew').textContent='—';
  $('briefTitle').textContent='Sign in to see your day';
  $('briefMeta').textContent='Private paper account report';
  $('briefContent').textContent='Sign in to read your daily recap.';
