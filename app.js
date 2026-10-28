@@ -5,6 +5,7 @@ const PROJECT_URL='https://ziuvbhwurlplpgjvnwwu.supabase.co';
 const PUBLISHABLE_KEY='sb_publishable_DwjlTvNC2g6302A5T_8Z5Q_yGqANv_-';
 const API=PROJECT_URL+'/functions/v1/iihq-mobile?action=dashboard';
 const ALPACA_API=PROJECT_URL+'/functions/v1/iihq-alpaca-read?action=';
+const FRED_API=PROJECT_URL+'/functions/v1/iihq-fred?action=overview';
 const client=createClient(PROJECT_URL,PUBLISHABLE_KEY,{auth:{persistSession:true,storage:window.sessionStorage,autoRefreshToken:true,detectSessionInUrl:true}});
 const $=id=>document.getElementById(id);
 
@@ -76,6 +77,7 @@ for(const button of $('nav').querySelectorAll('button')){
    for(const key of Object.keys(TABS))$('view-'+key).classList.toggle('hidden',key!==tab);
    $('viewTitle').textContent=TABS[tab];
    if(tab==='strategies'&&ownerApproved)refreshSavedScans().catch(()=>{});
+   if(tab==='research'&&!fredLoaded)loadFredOverview().catch(()=>{});
    if(tab==='risk'&&ownerApproved)refreshReadiness().catch(()=>{});
    if(tab==='ops')refreshOpeningCheck().catch(()=>{});
  });
@@ -591,3 +593,82 @@ async function refreshOpeningCheck(){
 }
 $('opsRefresh').addEventListener('click',()=>refreshOpeningCheck().catch(()=>{}));
 setInterval(()=>{if(ownerApproved&&!document.hidden&&!$('view-ops').classList.contains('hidden'))refreshOpeningCheck().catch(()=>{});},60000);
+
+
+// FRED macroeconomic research. Key stays in Supabase; observations are NOT real-time quotes.
+let fredLoaded=false;
+let fredLoading=false;
+let fredRequest=0;
+function createFredCard(item){
+ const card=document.createElement('div');card.className='mini';
+ card.style.minHeight='174px';
+ const title=document.createElement('span');title.className='eyebrow';title.textContent=item.label||item.id;
+ const main=document.createElement('b');main.style.fontSize='21px';
+ main.style.marginTop='12px';
+ const date=document.createElement('p');date.className='mono';date.style.fontSize='10px';
+ const details=document.createElement('p');details.className='mono';details.style.marginTop='7px';
+ const link=document.createElement('a');
+ link.textContent='FRED '+String(item.id||'')+' ↗';
+ link.href='https://fred.stlouisfed.org/series/'+encodeURIComponent(item.id||'');
+ link.target='_blank';link.rel='noopener noreferrer';link.style.fontSize='11px';
+ link.style.display='inline-block';link.style.marginTop='12px';
+ if(item.status==='OK'&&item.latest){
+   const value=Number(item.latest.value);
+   main.textContent=Number.isFinite(value)?value.toFixed(2)+(item.units==='%'?'%':' pp'):'—';
+   date.textContent='OBSERVED '+item.latest.observation_date+' · '+item.frequency;
+   if(item.previous&&Number.isFinite(Number(item.previous.value))){
+     const delta=value-Number(item.previous.value);
+     details.textContent='Previous observation '+Number(item.previous.value).toFixed(2)+
+       ' · change '+(delta>=0?'+':'')+delta.toFixed(2)+' points';
+   }else details.textContent='Previous observation unavailable';
+ }else{
+   main.textContent='UNAVAILABLE';
+   date.textContent='No verified observation';
+   details.textContent=item.error==='FRED_CREDENTIALS_OR_REQUEST_REJECTED'?
+     'FRED rejected the key or request':'FRED data temporarily unavailable';
+ }
+ card.append(title,main,date,details,link);return card;
+}
+async function loadFredOverview(){
+ if(fredLoading)return;
+ if(!ownerApproved){
+   $('fredStatus').textContent='OWNER SIGN-IN REQUIRED';
+   $('fredLastFetch').textContent='This feature retrieves data through the private Supabase server. Market prices remain available separately.';
+   return;
+ }
+ const {data:{session}}=await client.auth.getSession();
+ if(!session)return;
+ const id=++fredRequest;fredLoading=true;
+ $('fredRefresh').disabled=true;
+ $('fredStatus').textContent='CHECKING FRED CONNECTION…';
+ try{
+   const res=await fetch(FRED_API,{method:'GET',cache:'no-store',
+     headers:{Authorization:'Bearer '+session.access_token}});
+   const data=await res.json();
+   if(id!==fredRequest)return;
+   if(!res.ok){
+     const description=data.error==='FRED_API_KEY_NOT_CONFIGURED'?
+       'FRED_API_KEY secret not detected in Investing Supabase. Check Edge Functions → Secrets and its exact name.':
+       data.error==='FRED_CREDENTIALS_OR_REQUEST_REJECTED'||data.series?.some(x=>x.error==='FRED_CREDENTIALS_OR_REQUEST_REJECTED')?
+       'FRED rejected the saved API key or request. Verify the key is active in your FRED account.':
+       'Could not retrieve FRED indicators right now. No data will be invented.';
+     $('fredStatus').textContent='NOT CONNECTED';
+     $('fredLastFetch').textContent=description;
+     fredLoaded=false;return;
+   }
+   const count=Number(data.working_series||0);
+   $('fredStatus').textContent=count===data.total_series?'CONNECTED · '+count+'/'+data.total_series:
+     'PARTIAL · '+count+'/'+data.total_series;
+   $('fredLastFetch').textContent='API CHECK '+new Date(data.fetched_at).toLocaleString('en-GB')+
+     ' · Observation dates may lag releases and data may be revised.';
+   const target=$('fredIndicators');target.replaceChildren();
+   for(const item of data.series||[])target.append(createFredCard(item));
+   fredLoaded=count===data.total_series;
+ }catch(_){
+   if(id!==fredRequest)return;
+   $('fredStatus').textContent='DATA SERVICE UNAVAILABLE';
+   $('fredLastFetch').textContent='Network or authorisation error. Refresh to try again.';
+   fredLoaded=false;
+ }finally{if(id===fredRequest){fredLoading=false;$('fredRefresh').disabled=false;}}
+}
+$('fredRefresh').addEventListener('click',()=>loadFredOverview().catch(()=>{}));
