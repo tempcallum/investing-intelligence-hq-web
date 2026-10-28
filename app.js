@@ -20,6 +20,7 @@ const DEFAULT=['AAPL','MSFT','NVDA','AMZN','META','GOOGL','TSLA','JPM','SPY','QQ
 const NAMES={AAPL:'Apple Inc.',MSFT:'Microsoft Corporation',NVDA:'NVIDIA Corporation',AMZN:'Amazon.com Inc.',META:'Meta Platforms Inc.',GOOGL:'Alphabet Inc.',TSLA:'Tesla Inc.',JPM:'JPMorgan Chase & Co.',SPY:'SPDR S&P 500 ETF',QQQ:'Invesco QQQ Trust',AMD:'Advanced Micro Devices',PLTR:'Palantir Technologies','BRK.B':'Berkshire Hathaway'};
 const TABS={overview:'Your portfolio',control:'Market data control centre',markets:'Market overview',research:'Company intelligence',strategies:'Strategy laboratory',paper:'Paper trading desk',risk:'Risk & audit',ops:'Market opening checks',discover:'Opportunity discovery & journal'};
 let ciRequest=0; // Initialised before initial setSymbol() calls the hoisted research UI reset.
+let briefBusy=false,briefReports=[];
 let chartTimeframe='5Min';
 let selected='AAPL',signedIn=false,ownerApproved=false;
 const autoScannerMap=new Map();
@@ -94,6 +95,7 @@ for(const button of $('nav').querySelectorAll('button')){
    if(tab==='ops')refreshOpeningCheck().catch(()=>{});
    if(tab==='discover')refreshJournal().catch(()=>{});
    if(tab==='overview'&&ownerApproved)refreshPortfolio().catch(()=>{});
+   if(tab==='overview'&&ownerApproved)refreshDailyBrief().catch(()=>{});
    if(tab==='control'&&ownerApproved)refreshDataControl().catch(()=>{});
    const more=$('moreNav');if(more)more.open=false;
    for(const b of $('nav').querySelectorAll('button'))b.setAttribute('aria-current',b===button?'page':'false');
@@ -157,6 +159,7 @@ async function refreshDesk(token){
    await refreshAlpaca();
    await refreshSavedScans();
    if(!$('view-overview').classList.contains('hidden'))await refreshPortfolio();
+   if(!$('view-overview').classList.contains('hidden'))await refreshDailyBrief();
  }catch(_){
    clearPrivateAccountUI();ownerApproved=false;
    note('Could not load private data service. Check the connection and try again.',true);
@@ -987,6 +990,14 @@ setInterval(()=>{if(ownerApproved&&!document.hidden&&!$('view-discover').classLi
 
 // Clear every private value when logged out or if the owner check fails.
 function clearPrivateAccountUI(){
+ briefReports=[];
+ $('briefTitle').textContent='Sign in to see your day';
+ $('briefMeta').textContent='Private paper account report';
+ $('briefContent').textContent='Sign in to read your daily recap.';
+ $('briefDate').replaceChildren();
+ const option=document.createElement('option');option.value='';option.textContent='Latest report';
+ $('briefDate').append(option);
+
  ciResetDisplay('');
  for(const id of ['ovCash','ovInvested','ovBuying','ctrlFresh','ctrlScans','ctrlMissing'])$(id).textContent='—';
  $('ovBalance').textContent='Sign in';
@@ -1273,3 +1284,71 @@ async function loadCompanyIntel(){
  }finally{if(id===ciRequest)$('ciRefresh').disabled=false}
 }
 $('ciRefresh').addEventListener('click',()=>loadCompanyIntel().catch(()=>{}));
+
+
+// DAILY SUMMARY: true saved research and broker-paper facts, no AI guessing.
+function briefDateLabel(day){
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(day||''))return 'Previous session';
+ const d=new Date(day+'T12:00:00Z');
+ return new Intl.DateTimeFormat('en-GB',{weekday:'short',day:'numeric',month:'short',
+  year:'numeric',timeZone:'America/New_York'}).format(d);
+}
+function briefRender(report){
+ const container=$('briefContent');container.replaceChildren();
+ if(!report){
+  $('briefTitle').textContent='After today’s market closes';
+  $('briefMeta').textContent='Reports appear here automatically after each eligible US market session.';
+  const p=document.createElement('p');
+  p.textContent='The scheduled report hasn’t been produced yet. IIHQ will summarise the shares it checked, the companies it investigated and the real paper-order history after the US market closes. You do not need to leave the app open.';
+  container.append(p);return;
+ }
+ $('briefTitle').textContent=String(report.report_title||'Daily recap');
+ $('briefMeta').textContent='Market day '+briefDateLabel(report.market_date)+
+  ' · prepared '+ovTime(report.generated_at)+
+  (report.status==='PARTIAL'?' · some information could not be verified':'');
+ const raw=String(report.report_text||'No written report available.');
+ for(const paragraph of raw.split(/\n\s*\n/).slice(0,12)){
+  if(!paragraph.trim())continue;
+  const p=document.createElement('p');p.textContent=paragraph;
+  container.append(p);
+ }
+ if(Array.isArray(report.warnings)&&report.warnings.length){
+  const caution=document.createElement('p');caution.className='ov-bad';
+  caution.textContent='A few checks could not be completed, so parts of this recap may be missing.';
+  container.append(caution);
+ }
+}
+async function refreshDailyBrief(){
+ if(!ownerApproved){briefRender(null);return}
+ if(briefBusy)return;
+ const {data:{session}}=await client.auth.getSession();if(!session)return;
+ briefBusy=true;$('briefRefresh').disabled=true;
+ try{
+  const data=await alpacaGet('dailybrief',session);
+  if(!ownerApproved)return;
+  briefReports=Array.isArray(data.reports)?data.reports:[];
+  const select=$('briefDate'),previous=select.value;
+  select.replaceChildren();
+  if(!briefReports.length){
+   const option=document.createElement('option');option.value='';option.textContent='No reports yet';
+   select.append(option);briefRender(null);
+  }else{
+   for(const report of briefReports){
+    const option=document.createElement('option');option.value=report.market_date;
+    option.textContent=briefDateLabel(report.market_date);
+    select.append(option);
+   }
+   const chosen=briefReports.find(x=>x.market_date===previous)||briefReports[0];
+   select.value=chosen.market_date;briefRender(chosen);
+  }
+ }catch(_){
+  $('briefTitle').textContent='Report not available';
+  $('briefMeta').textContent='The private daily report could not be loaded.';
+  $('briefContent').textContent='Try refreshing later. No report details are being guessed.';
+ }finally{briefBusy=false;$('briefRefresh').disabled=false}
+}
+$('briefRefresh').addEventListener('click',()=>refreshDailyBrief().catch(()=>{}));
+$('briefDate').addEventListener('change',()=>{
+ const report=briefReports.find(x=>x.market_date===$('briefDate').value);
+ briefRender(report||null);
+});
