@@ -556,6 +556,7 @@ async function refreshReadiness(){
 $('refreshRisk').addEventListener('click',()=>refreshReadiness().catch(()=>{}));
 setInterval(()=>{if(ownerApproved&&!document.hidden&&!$('view-risk').classList.contains('hidden'))refreshReadiness().catch(()=>{})},60000);
 
+if(new Date().toISOString().slice(0,10)!=='2026-10-28')$('opsFomc').classList.add('hidden');
 let opsRequestId=0;
 function opsTime(t){
  if(!t)return '—';
@@ -578,8 +579,11 @@ async function refreshOpeningCheck(){
   $('opsSymbols').textContent=String(heartbeat.last_scanned_count??'—')+' passed, '+String(heartbeat.last_error_count??'—')+' failed';
   $('opsBroker').textContent=data.broker_paper_account_connected?'PAPER CONNECTED':'UNVERIFIED';
   $('opsStored').textContent=data.stored_results==null?'UNKNOWN':String(data.stored_results);
-  $('opsOrders').textContent=data.paper_orders_enabled?'UNEXPECTED FLAG — STOP':'OFF / NO ORDER ROUTE';
-  $('opsMessage').textContent=heartbeat.recent_successful_contact&&data.broker_paper_account_connected&&!data.paper_orders_enabled?
+  $('opsOrders').textContent=!data.paper_orders_flag_verified?'STATUS UNVERIFIED':data.paper_orders_enabled?'UNEXPECTED FLAG — STOP':'OFF / NO ORDER ROUTE';
+  const healthy=heartbeat.recent_successful_contact&&['SKIPPED','COMPLETE'].includes(heartbeat.last_state)&&
+  Number(heartbeat.last_error_count||0)===0&&data.broker_paper_account_connected&&
+  data.paper_orders_flag_verified===true&&data.paper_orders_enabled===false;
+  $('opsMessage').textContent=healthy?
    'Infrastructure is responding. Await actual market-hours price data; no execution approval is given.':
    'One or more operational checks needs attention. Do not infer that market data or scanning is ready.';
  }catch(_){if(id!==opsRequestId)return;$('opsMarket').textContent='CHECK FAILED';$('opsHeartbeat').textContent='UNVERIFIED';$('opsMessage').textContent='Could not verify the backend. No readiness claim is possible.';}
