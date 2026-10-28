@@ -28,6 +28,18 @@
 .workspace{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,.7fr);gap:10px;margin-top:10px}.spacer{margin-top:10px}
 .actions{display:flex;gap:8px;flex-wrap:wrap}.btn{background:#18372b;color:var(--green);border:1px solid #36654a;padding:10px 13px;border-radius:6px;font-size:12px;font-weight:800;text-decoration:none;display:inline-flex;align-items:center;justify-content:center}.btn:hover{background:#214c38}.warning{color:var(--orange)}.locked{color:#91aca6;background:#152023;border:1px solid #273c3d;border-radius:6px;font-size:11px;padding:11px 12px}
 .bottom{font:10px ui-monospace,monospace;color:#78918b;margin-top:20px;line-height:1.8}
+
+/* FRED economic cards: no inline text run-on, readable even on narrow iPhones. */
+.fred-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:4px 0 8px}
+.fred-card{min-width:0;border:1px solid #304d48;border-radius:9px;padding:15px;background:#111f21;display:flex;flex-direction:column;gap:10px;overflow-wrap:anywhere}
+.fred-label{font-size:13px;font-weight:700;line-height:1.45;color:#d8e9e0}
+.fred-value{font-size:clamp(24px,3vw,34px);font-weight:850;line-height:1.15;color:#e4f6eb;letter-spacing:-.035em;font-variant-numeric:tabular-nums}
+.fred-explain{font-size:12px;line-height:1.5;color:#c6d9cf}
+.fred-date,.fred-prev{font:11px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:#92aca6}
+.fred-source{display:inline-block;align-self:flex-start;margin-top:auto;padding-top:4px;font-size:12px;color:var(--green)}
+.fred-status{color:var(--muted);font-size:12px;line-height:1.6}
+@media(max-width:670px){.fred-grid{grid-template-columns:minmax(0,1fr)}.fred-card{padding:15px;gap:9px}.fred-value{font-size:30px}}
+
 .overlay{position:fixed;inset:0;background:#000b;z-index:20;display:grid;place-items:center;padding:20px}.dialog{background:#101b1d;border:1px solid #456258;width:min(440px,100%);border-radius:12px;padding:20px;box-shadow:0 30px 100px #0009}.hidden{display:none!important}.dialog h2{margin:0 0 7px;font-size:19px}.dialog p{font-size:12px;color:var(--muted);line-height:1.5}.close{background:transparent;border:0;color:var(--ink);font-size:22px;line-height:1}.dialog label{display:block;font-size:11px;color:#a1b8ae;margin:14px 0 5px}.dialog .authbuttons{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}.msg{font-size:12px!important;color:#d2e9dc!important}.msg.error{color:#ff9d96!important}
 @media(max-width:1100px){.grid{grid-template-columns:240px minmax(0,1fr)}.rightcol{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:10px}.rightcol .panel{height:100%}}@media(max-width:730px){.topinner{padding:10px 12px}.bt{font-size:12px}.topright .badge{display:none}.shell{padding:10px 9px 70px}.bread h1{font-size:19px}.grid{display:flex;flex-direction:column}.grid>.panel{width:100%}.leftcol{order:2}.midcol{order:1}.rightcol{order:3;display:grid;grid-template-columns:1fr 1fr;gap:9px;width:100%}.workspace{grid-template-columns:1fr}.chart{height:195px}.stocks{max-height:220px}.instrument{padding:13px}.instrument h2{font-size:26px}.pricebig{font-size:32px}.rightcol .phead b{font-size:10px}.rightcol .pbody{padding:10px}.bigstat{font-size:20px}.tickerinner{gap:15px}.nav button{padding:12px}.metricrow{gap:5px}.metric{padding:9px}.metric .k{font-size:9px}.metric .v{font-size:12px}}
 </style>
@@ -49,13 +61,13 @@
 <section class="panel" style="margin-top:12px">
 <div class="phead"><b>ECONOMIC INTELLIGENCE / FRED</b><span>OFFICIAL MACRO DATA</span></div>
 <div class="pbody stack">
-  <div class="info">US interest rates, Treasury yields, inflation and unemployment from the Federal Reserve Bank of St. Louis. These are published economic observations, <b>not live market quotes</b>. Dates and revisions matter when interpreting them.</div>
+  <div class="info">These figures help the research system understand the US economy. <b>You do not have to interpret them to use the terminal.</b> Each card explains its purpose and gives the date of the observation. Economic data is not a live share price or an automatic trading signal.</div>
   <div class="row" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
     <div><div class="signal">FRED CONNECTION</div><div class="m12 mono" id="fredStatus">NOT CHECKED</div></div>
     <button id="fredRefresh" class="btn" type="button">REFRESH ECONOMIC DATA ↻</button>
   </div>
-  <div id="fredIndicators" class="cards" aria-label="Latest FRED economic series">
-    <div class="mini" style="grid-column:1/-1"><b>Awaiting FRED data</b><p>Sign in to your Investing HQ account and open Research, or use Refresh Economic Data.</p></div>
+  <div id="fredIndicators" class="fred-grid" aria-label="Latest FRED economic series">
+    <div class="fred-card"><div class="fred-label">Awaiting economic data</div><div class="fred-status">Sign in to Investing HQ and open Research, or tap Refresh Economic Data.</div></div>
   </div>
   <div id="fredLastFetch" class="tiny mono">No data retrieved yet. FRED observation dates are not publication timestamps.</div>
   <div class="locked">Economic indicators are released on different schedules and can be revised. Their latest values must not be treated as known at earlier backtest dates. No news, earnings-event, FOMC forecasting or trading-execution capability is implied.</div>
