@@ -1,0 +1,27 @@
+{
+  "id": "/investing-intelligence-hq-web/",
+  "name": "Investing Intelligence HQ",
+  "short_name": "IIHQ",
+  "description": "Independent investment research, US markets and virtual paper portfolio.",
+  "start_url": "/investing-intelligence-hq-web/",
+  "scope": "/investing-intelligence-hq-web/",
+  "display": "standalone",
+  "background_color": "#0a1113",
+  "theme_color": "#0a1918",
+  "lang": "en-GB",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "./icons/iihq-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/iihq-icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
