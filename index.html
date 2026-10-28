@@ -2,9 +2,19 @@
 <html lang="en-GB">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0a1012"><meta name="referrer" content="no-referrer"><meta name="apple-mobile-web-app-capable" content="yes">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://esm.sh https://*.esm.sh; style-src 'unsafe-inline'; connect-src 'self' https://esm.sh https://*.esm.sh https://ziuvbhwurlplpgjvnwwu.supabase.co; img-src 'self' data:; base-uri 'none'; form-action 'none'">
-<title>IIHQ // Markets Terminal</title>
+<meta name="theme-color" content="#0a1918">
+<meta name="referrer" content="no-referrer">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="IIHQ">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="application-name" content="Investing Intelligence HQ">
+<meta name="description" content="Independent markets, research and paper portfolio workstation.">
+<link rel="manifest" href="./manifest.webmanifest?v=1">
+<link rel="apple-touch-icon" sizes="192x192" href="./icons/iihq-icon-192.png?v=1">
+<link rel="icon" type="image/png" sizes="192x192" href="./icons/iihq-icon-192.png?v=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://esm.sh https://*.esm.sh; style-src 'unsafe-inline'; connect-src 'self' https://esm.sh https://*.esm.sh https://ziuvbhwurlplpgjvnwwu.supabase.co; img-src 'self' data:; base-uri 'none'; form-action 'none'; manifest-src 'self'; worker-src 'self'">
+<title>Investing Intelligence HQ</title>
 <style>
 :root{color-scheme:dark;font-family:Inter,-apple-system,BlinkMacSystemFont,system-ui,"Segoe UI",sans-serif;--bg:#080e10;--layer:#10191b;--layer2:#142022;--stroke:#294041;--line:#213335;--ink:#e7f0ec;--muted:#809897;--green:#87e4b5;--aqua:#64d4ce;--orange:#eebd75;--red:#ff9896;background:var(--bg);color:var(--ink)}
 *{box-sizing:border-box}body{margin:0;min-height:100vh;background:#080e10}button,input{font:inherit}button{cursor:pointer}a{color:var(--green)}button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(--green);outline-offset:2px}
@@ -29,6 +39,14 @@
 .actions{display:flex;gap:8px;flex-wrap:wrap}.btn{background:#18372b;color:var(--green);border:1px solid #36654a;padding:10px 13px;border-radius:6px;font-size:12px;font-weight:800;text-decoration:none;display:inline-flex;align-items:center;justify-content:center}.btn:hover{background:#214c38}.warning{color:var(--orange)}.locked{color:#91aca6;background:#152023;border:1px solid #273c3d;border-radius:6px;font-size:11px;padding:11px 12px}
 .bottom{font:10px ui-monospace,monospace;color:#78918b;margin-top:20px;line-height:1.8}
 
+/* iPhone app branding and safe-area polish */
+.logo{background:#071b17;border:1px solid #27614a;overflow:hidden;border-radius:11px}
+.logo img{display:block;width:100%;height:100%;object-fit:cover;border-radius:10px}
+.install-guide{border:1px solid #284c3d;background:#12231d;border-radius:11px;padding:11px 14px;font-size:12px;line-height:1.7;color:#adc7b9}
+.install-guide summary{cursor:pointer;font-weight:750;color:#baf4d2}
+.install-guide>div{margin-top:10px}
+@media(display-mode:standalone){.install-guide{display:none}}
+@supports(padding-top:env(safe-area-inset-top)){.top{padding-top:env(safe-area-inset-top)}.shell{padding-bottom:calc(36px + env(safe-area-inset-bottom))}}
 /* Design v2: calm visual hierarchy and mobile navigation */
 :root{--bg:#0a1113;--layer:#101b1d;--layer2:#142124;--stroke:#29423e;--ink:#e9f3ee;--muted:#a3b7b1}
 body{background:var(--bg)}.shell{max-width:1330px;padding-top:18px}
@@ -103,7 +121,7 @@ body{background:var(--bg)}.shell{max-width:1330px;padding-top:18px}
 </style>
 </head>
 <body>
-<header class="top"><div class="topinner"><div class="brand"><div class="logo">II</div><div><div class="bt">INVESTING INTELLIGENCE HQ</div><div class="sub">MARKETS &nbsp;//&nbsp; RESEARCH &nbsp;//&nbsp; EXECUTION</div></div></div><div class="topright"><span class="badge" id="feedBadge"><span class="dot"></span>FEED LOCKED</span><button class="acc" id="accountOpen">ACCOUNT / LOCKED</button></div></div></header>
+<header class="top"><div class="topinner"><div class="brand"><div class="logo"><img src="./icons/iihq-icon-192.png?v=1" width="40" height="40" alt=""></div><div><div class="bt">INVESTING INTELLIGENCE HQ</div><div class="sub">MARKETS &nbsp;·&nbsp; RESEARCH &nbsp;·&nbsp; PAPER</div></div></div><div class="topright"><span class="badge" id="feedBadge"><span class="dot"></span>FEED LOCKED</span><button class="acc" id="accountOpen">ACCOUNT / LOCKED</button></div></div></header>
 <div class="tickerbar"><div class="tickerinner" id="tickerbar" aria-label="Market watchlist"><span class="ticker">MARKET DATA NOT CONNECTED — NO LIVE PRICES</span></div></div>
 <main class="shell">
 <nav class="nav" id="nav" aria-label="Main navigation"><button class="active" data-tab="overview" type="button">Home</button><button data-tab="markets" type="button">Markets</button><button data-tab="discover" type="button">Discover</button><button data-tab="research" type="button">Research</button><details id="moreNav" class="nav-more"><summary>More</summary><div class="nav-more-items"><button type="button" data-tab="strategies">Strategy lab</button><button type="button" data-tab="paper">Paper trading</button><button type="button" data-tab="risk">Risk &amp; audit</button><button type="button" data-tab="ops">Opening check</button><button type="button" data-tab="control">Data control centre</button></div></details></nav>
@@ -138,14 +156,14 @@ body{background:var(--bg)}.shell{max-width:1330px;padding-top:18px}
   <section class="panel"><div class="phead"><b>YOUR PAPER HOLDINGS</b><span id="ovPositionCount">—</span></div>
    <div class="pbody"><div id="ovPositions" class="stack" style="gap:0">Sign in to see your broker-reported positions.</div></div>
   </section>
-  <section class="panel"><div class="phead"><b>REAL INVESTMENTS</b><span>SEPARATE</span></div>
-   <div class="pbody stack">
-    <div class="info">Your real brokerage is <b>not connected</b>. This Home screen shows only the verified <b>Alpaca virtual paper account</b>. Real account holdings and balances are kept separate and are never written into the public website code.</div>
-    <div class="tiny">To include live-money holdings later, we'll need an authorised read-only connector or a separately labelled manual tracker.</div>
-   </div>
-  </section>
+
   <div class="actions"><button class="btn" id="ovRefresh" type="button">REFRESH ACCOUNT ↻</button><button class="secondary" id="ovOpenPaper" type="button">PAPER ORDER HISTORY</button></div>
   <div class="locked" id="ovStatus">Owner login required. This page cannot submit orders.</div>
+  <details class="install-guide" id="installGuide">
+   <summary>Use IIHQ as an iPhone app</summary>
+   <div>Open this website in <b>Safari</b>, tap <b>Share</b>, choose <b>Add to Home Screen</b>, enable <b>Open as Web App</b> if shown, then tap <b>Add</b>. The IIHQ icon will appear on your Home Screen.</div>
+   <div class="tiny">Your private paper account may require signing in again from the new Home Screen app.</div>
+  </details>
  </div>
 </div>
 </section>
@@ -153,7 +171,7 @@ body{background:var(--bg)}.shell{max-width:1330px;padding-top:18px}
 <div class="grid">
 <section class="panel leftcol"><div class="phead"><b>WATCHLIST / US</b><span id="watchCount">—</span></div><form class="watchTools" id="watchForm"><input id="addSymbol" placeholder="ADD TICKER · e.g. AAPL" aria-label="Add ticker" maxlength="8" autocapitalize="characters"><button class="secondary" aria-label="Add ticker" type="submit">+</button></form><div class="headrow"><span>SYMBOL</span><span>INSTRUMENT</span><span>LAST</span></div><div class="stocks" id="watchStocks"></div><div class="footerNote" id="watchFooter">Watchlist stored on this device · sign in for IEX market prices</div></section>
 <section class="panel midcol"><div class="phead"><b>INSTRUMENT WORKSPACE</b><button id="refreshQuotes" class="secondary" style="padding:5px 9px;font-size:10px" type="button">↻ REFRESH IEX</button></div><div class="instrument"><div class="iname"><div><h2 id="chosenSymbol">AAPL</h2><p class="company" id="chosenName">Apple Inc.</p></div><span class="statusTag" id="instrumentFeedTag">IEX / LOCKED</span></div><div class="pricebig mono">— <span style="font-size:12px;color:var(--muted)">USD</span></div><div class="tiny" id="quoteSource">To view Alpaca IEX prices, sign in to your private paper-data connection. Quotes may not represent the whole US market.</div><div class="tiny mono" id="feedRefreshAt" style="margin-top:6px">AUTO UPDATE: 20 SECONDS WHILE MARKETS TAB IS VISIBLE · NOT TICK STREAMING</div><div class="chart" id="priceChart"><div><strong>NO VERIFIED PRICE DATA</strong><small>Chart, intraday candles and volume will populate from the future authorised market feed. No prices are simulated.</small></div></div><div class="axes"><span>LAST AVAILABLE</span><span>US SESSION · 5 MIN</span><span>CLOSE</span></div><div class="metricrow"><div class="metric"><div class="k">DAY CHANGE</div><div class="v">—</div></div><div class="metric"><div class="k">DAY VOLUME</div><div class="v">—</div></div><div class="metric"><div class="k">VWAP</div><div class="v">—</div></div></div></div></section>
-<div class="rightcol"><section class="panel"><div class="phead"><b>TRADING SYSTEM</b><small>STATUS</small></div><div class="shelf"><div class="signal">SYSTEM MODE</div><div class="bigstat green">SIMULATION</div><div class="tiny">Paper order execution is OFF. Robinhood and live-money routes are not connected.</div></div><div class="line"><span>Alpaca paper</span><b class="warning">NOT LINKED</b></div><div class="line"><span>Order engine</span><b class="green">LOCKED</b></div><div class="line"><span>Market data</span><b class="warning">NO FEED</b></div></section>
+<div class="rightcol"><section class="panel"><div class="phead"><b>TRADING SYSTEM</b><small>STATUS</small></div><div class="shelf"><div class="signal">SYSTEM MODE</div><div class="bigstat green">SIMULATION</div><div class="tiny">Paper order execution is OFF. No live-money trading route is connected.</div></div><div class="line"><span>Alpaca paper</span><b class="green">SEE HOME</b></div><div class="line"><span>Order engine</span><b class="green">LOCKED</b></div><div class="line"><span>Market data</span><b class="warning">IEX ONLY</b></div></section>
 <section class="panel"><div class="phead"><b>RISK SENTINEL</b><small>PRE-TRADE</small></div><div class="pbody stack"><div class="info">Independent risk limits and a kill switch will govern simulated orders when the execution engine is tested.</div><div class="line" style="padding:8px 0"><span>Exposure</span><b>—</b></div><div class="line" style="padding:8px 0"><span>Daily P&amp;L</span><b>—</b></div><div class="line" style="padding:8px 0"><span>Last inspection</span><b>—</b></div></div></section></div>
 </div></section>
 <section id="view-research" class="view hidden"><div class="workspace" style="margin-top:0"><section class="panel"><div class="phead"><b>COMPANY INTELLIGENCE</b><span>REGULATORY SOURCES</span></div><div class="pbody stack"><div class="label muted m12">SELECTED US EQUITY</div><div class="bigstat mono" id="researchSymbol">AAPL</div><div class="info">Official SEC filings are available through the public EDGAR search. Automated financial statement extraction and analyst-grade valuation models are in development — there are no invented financial ratios here.</div><div class="actions"><a id="secLink" class="btn" href="https://www.sec.gov/edgar/search/" target="_blank" rel="noopener noreferrer">VIEW SEC FILINGS ↗</a><button class="btn" id="researchNext">NEXT WATCHLIST TICKER →</button></div></div></section><section class="panel"><div class="phead"><b>RESEARCH PIPELINE</b><span>BUILD STATUS</span></div><div class="line"><span>SEC filings</span><b>MANUAL SOURCE</b></div><div class="line"><span>Fundamental engine</span><b>NOT CONNECTED</b></div><div class="line"><span>Quarterly earnings</span><b>NOT CONNECTED</b></div><div class="line"><span>News sentiment</span><b>NOT CONNECTED</b></div><div class="line"><span>Valuation scenarios</span><b>NOT CONNECTED</b></div></section></div>
@@ -367,8 +385,8 @@ body{background:var(--bg)}.shell{max-width:1330px;padding-top:18px}
  <div class="locked">Research diagnostics only. Neither this screen nor the paper portfolio can place Alpaca orders.</div>
 </div>
 </section>
-<footer class="bottom">IIHQ / INDEPENDENT INVESTMENT RESEARCH SOFTWARE · NOT AFFILIATED WITH JPMORGAN CHASE OR BLOOMBERG<br>US PRICES FROM ALPACA IEX ONLY (AUTHORISED USERS) · NO FULL-MARKET TAPE · PAPER FIGURES IN USD</footer>
+<footer class="bottom">IIHQ · INDEPENDENT RESEARCH WORKSTATION · PAPER MODE<br>MARKET DATA: ALPACA IEX · PARTIAL US EXCHANGE COVERAGE · VIRTUAL BALANCES IN USD</footer>
 </main>
 <div class="overlay hidden" id="authOverlay" role="dialog" aria-modal="true" aria-labelledby="authTitle"><div class="dialog"><div style="display:flex;align-items:center;justify-content:space-between"><h2 id="authTitle">Authorised account access</h2><button class="close" id="authClose" aria-label="Close login">×</button></div><p>Sign in only when you need private portfolio details. Public market research requires no account.</p><div id="loginForm"><label for="email">EMAIL</label><input id="email" type="email" autocomplete="email" placeholder="your@email.com"><label for="password">PASSWORD</label><input id="password" type="password" autocomplete="current-password" placeholder="Supabase Auth password"><div class="authbuttons"><button class="btn" id="passwordLogin">SIGN IN</button><button class="btn" id="magicLogin">EMAIL SIGN-IN LINK</button></div></div><div id="signedIn" class="hidden"><div class="info">Authenticated as <b id="userEmail"></b></div><div class="authbuttons"><button class="btn" id="refresh">REFRESH PRIVATE DESK</button><button class="btn" id="signout">SIGN OUT</button></div></div><p id="authMessage" class="msg">Your Supabase administration login is separate from this dashboard user. Create an Auth user in the Investing HQ project first.</p></div></div>
-<script type="module" src="./app.js?v=20261028-portfolio-v2"></script>
+<script type="module" src="./app.js?v=20261028-pwa-v1"></script>
 </body></html>
