@@ -175,7 +175,48 @@ body{background:var(--bg)}.shell{max-width:1330px;padding-top:18px}
 <div class="rightcol"><section class="panel"><div class="phead"><b>TRADING SYSTEM</b><small>STATUS</small></div><div class="shelf"><div class="signal">SYSTEM MODE</div><div class="bigstat green">SIMULATION</div><div class="tiny">Paper order execution is OFF. No live-money trading route is connected.</div></div><div class="line"><span>Alpaca paper</span><b class="green">SEE HOME</b></div><div class="line"><span>Order engine</span><b class="green">LOCKED</b></div><div class="line"><span>Market data</span><b class="warning">IEX ONLY</b></div></section>
 <section class="panel"><div class="phead"><b>RISK SENTINEL</b><small>PRE-TRADE</small></div><div class="pbody stack"><div class="info">Independent risk limits and a kill switch will govern simulated orders when the execution engine is tested.</div><div class="line" style="padding:8px 0"><span>Exposure</span><b>—</b></div><div class="line" style="padding:8px 0"><span>Daily P&amp;L</span><b>—</b></div><div class="line" style="padding:8px 0"><span>Last inspection</span><b>—</b></div></div></section></div>
 </div></section>
-<section id="view-research" class="view hidden"><div class="workspace" style="margin-top:0"><section class="panel"><div class="phead"><b>COMPANY INTELLIGENCE</b><span>REGULATORY SOURCES</span></div><div class="pbody stack"><div class="label muted m12">SELECTED US EQUITY</div><div class="bigstat mono" id="researchSymbol">AAPL</div><div class="info">Official SEC filings are available through the public EDGAR search. Automated financial statement extraction and analyst-grade valuation models are in development — there are no invented financial ratios here.</div><div class="actions"><a id="secLink" class="btn" href="https://www.sec.gov/edgar/search/" target="_blank" rel="noopener noreferrer">VIEW SEC FILINGS ↗</a><button class="btn" id="researchNext">NEXT WATCHLIST TICKER →</button></div></div></section><section class="panel"><div class="phead"><b>RESEARCH PIPELINE</b><span>BUILD STATUS</span></div><div class="line"><span>SEC filings</span><b>MANUAL SOURCE</b></div><div class="line"><span>Fundamental engine</span><b>NOT CONNECTED</b></div><div class="line"><span>Quarterly earnings</span><b>NOT CONNECTED</b></div><div class="line"><span>News sentiment</span><b>NOT CONNECTED</b></div><div class="line"><span>Valuation scenarios</span><b>NOT CONNECTED</b></div></section></div>
+<section id="view-research" class="view hidden">
+<div class="workspace" style="margin-top:0">
+  <section class="panel">
+    <div class="phead"><b>COMPANY INTELLIGENCE</b><span>SEC · OFFICIAL FILINGS</span></div>
+    <div class="pbody stack">
+      <div class="ov-eyebrow">SELECTED US EQUITY</div>
+      <div style="display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap">
+        <div><div class="bigstat mono" id="researchSymbol">AAPL</div><div class="tiny" id="ciCompany">Select an instrument to review.</div></div>
+        <button class="btn" id="ciRefresh" type="button">CHECK COMPANY ↻</button>
+      </div>
+      <div class="info">The SEC filings and selected financial figures are official regulatory disclosures. They are not live price quotes or a valuation recommendation. More research is required before any trade.</div>
+      <div class="line"><span>SEC source</span><b id="ciSecStatus">NOT CHECKED</b></div>
+      <div class="line"><span>Research time</span><b id="ciTime">—</b></div>
+      <div class="line"><span>Event and disclosure assessment</span><b class="warning" id="ciRisk">NOT VERIFIED</b></div>
+      <div class="locked" id="ciAlert">Automated company checking is not a buy or sell signal. Trading remains disabled.</div>
+      <div class="actions">
+        <a id="secLink" class="btn" href="https://www.sec.gov/edgar/search/" target="_blank" rel="noopener noreferrer">OPEN SEC SEARCH ↗</a>
+        <button class="secondary" id="researchNext" type="button">NEXT TICKER →</button>
+      </div>
+    </div>
+  </section>
+  <section class="panel">
+    <div class="phead"><b>EVENT RISK CONTROL</b><span>NO-TRADE POLICY</span></div>
+    <div class="pbody stack">
+      <div class="line"><span>Federal Reserve event window</span><b id="ciMacroStatus">NOT CHECKED</b></div>
+      <div id="ciMacroEvents" class="stack"><div class="tiny">Official events will appear after checking.</div></div>
+      <div class="locked">The Fed calendar is curated, not an exhaustive economic calendar. Earnings dates and breaking news remain unverified: <b>no automatic trade clearance</b>.</div>
+      <div id="ciRiskCodes" class="tiny">Awaiting risk evaluation.</div>
+    </div>
+  </section>
+</div>
+<div class="workspace" style="margin-top:14px">
+  <section class="panel">
+    <div class="phead"><b>RECENT SEC DISCLOSURES</b><span>FORM · FILED DATE</span></div>
+    <div class="pbody stack" id="ciFilings">No SEC filing history retrieved yet.</div>
+  </section>
+  <section class="panel">
+    <div class="phead"><b>AS-FILED FINANCIAL FACTS</b><span>XBRL · USD</span></div>
+    <div class="pbody stack" id="ciFinancials">No standardised company facts retrieved yet.</div>
+    <div class="pbody" style="padding-top:0"><div class="tiny">Reporting periods may differ. A single number cannot establish whether a company is cheap or expensive. No automatic valuation or earnings forecasts.</div></div>
+  </section>
+</div>
 <section class="panel" style="margin-top:12px">
 <div class="phead"><b>ECONOMIC INTELLIGENCE / FRED</b><span>OFFICIAL MACRO DATA</span></div>
 <div class="pbody stack">
