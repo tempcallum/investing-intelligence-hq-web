@@ -36,7 +36,7 @@
 <header class="top"><div class="topinner"><div class="brand"><div class="logo">II</div><div><div class="bt">INVESTING INTELLIGENCE HQ</div><div class="sub">MARKETS &nbsp;//&nbsp; RESEARCH &nbsp;//&nbsp; EXECUTION</div></div></div><div class="topright"><span class="badge" id="feedBadge"><span class="dot"></span>FEED LOCKED</span><button class="acc" id="accountOpen">ACCOUNT / LOCKED</button></div></div></header>
 <div class="tickerbar"><div class="tickerinner" id="tickerbar" aria-label="Market watchlist"><span class="ticker">MARKET DATA NOT CONNECTED — NO LIVE PRICES</span></div></div>
 <main class="shell">
-<nav class="nav" id="nav" aria-label="Terminal sections"><button class="active" data-tab="markets">01 &nbsp; MARKETS</button><button data-tab="research">02 &nbsp; RESEARCH</button><button data-tab="strategies">03 &nbsp; STRATEGY LAB</button><button data-tab="paper">04 &nbsp; PAPER TRADING</button><button data-tab="risk">05 &nbsp; RISK / AUDIT</button></nav>
+<nav class="nav" id="nav" aria-label="Terminal sections"><button class="active" data-tab="markets">01 &nbsp; MARKETS</button><button data-tab="research">02 &nbsp; RESEARCH</button><button data-tab="strategies">03 &nbsp; STRATEGY LAB</button><button data-tab="paper">04 &nbsp; PAPER TRADING</button><button data-tab="risk">05 &nbsp; RISK / AUDIT</button><button data-tab="ops">06 &nbsp; OPENING CHECK</button></nav>
 <div class="bread"><div><h1 id="viewTitle">Market overview</h1><p id="marketClock">TIME — · US CASH SESSION —</p></div><div class="scope">PAPER ONLY<br>TRADING DISABLED</div></div>
 <section id="view-markets" class="view">
 <div class="grid">
@@ -127,6 +127,27 @@
 </section>
 </section>
 <section id="view-paper" class="view hidden"><div class="workspace" style="margin-top:0"><section class="panel"><div class="phead"><b>ALPACA / PAPER PORTFOLIO</b><span>PRIVATE DATA</span></div><div class="pbody stack"><div class="bigstat" id="paperEquity">ACCOUNT LOCKED</div><div class="tiny" id="paperMessage">The private portfolio requires owner authorisation. No Alpaca paper API key has been added to the backend yet.</div><div class="actions"><button class="btn" id="paperLogin">OPEN PRIVATE ACCOUNT →</button><button class="btn" id="paperRefresh">REFRESH STATUS</button></div><div class="locked">No buy/sell order controls are enabled. This is an analysis workstation, not an active trading session.</div></div></section><section class="panel"><div class="phead"><b>POSITION &amp; ORDER BLOTTER</b><span>READ-ONLY</span></div><div class="pbody"><div class="label muted mono m12">OPEN PAPER POSITIONS</div><div id="positionBlotter" class="tiny">Awaiting account connection.</div><div class="label muted mono m12" style="margin-top:14px">RECENT PAPER ORDERS</div><div id="orderBlotter" class="tiny">No verified paper order records can be shown until your owner login and Alpaca connection are approved.</div></div></section></div></section>
+<section id="view-ops" class="view hidden"><div class="workspace" style="margin-top:0">
+<section class="panel"><div class="phead"><b>MARKET OPENING CONTROL ROOM</b><span>OWNER ONLY</span></div><div class="pbody stack">
+<div class="info">Verify the paper broker connection, actual server-side scanner heartbeat and market clock. This is an infrastructure check, NOT a trading recommendation.</div>
+<div class="row" style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><div><div class="signal">BROKER MARKET SESSION</div><div id="opsMarket" class="bigstat">NOT CHECKED</div></div><button class="btn" id="opsRefresh">VERIFY NOW ↻</button></div>
+<div id="opsNextOpen" class="tiny mono">Alpaca broker clock is authoritative for holidays.</div>
+<div class="line"><span>Scanner heartbeat</span><b id="opsHeartbeat">UNVERIFIED</b></div>
+<div class="line"><span>Last server run</span><b id="opsLastRun">—</b></div>
+<div class="line"><span>Last scan result</span><b id="opsOutcome">—</b></div>
+<div class="line"><span>Symbol checks</span><b id="opsSymbols">—</b></div>
+<div class="line"><span>Alpaca paper account</span><b id="opsBroker">UNVERIFIED</b></div>
+<div class="line"><span>Saved signal rows</span><b id="opsStored">—</b></div>
+<div class="line"><span>Automated trading</span><b class="green" id="opsOrders">OFF</b></div>
+<div id="opsMessage" class="locked">Sign in to verify the live private system. Never treat this readiness panel as authorisation to trade.</div></div></section>
+<section class="panel"><div class="phead"><b>US SESSION · UK TIME · 28 OCT</b><span>RESEARCH ONLY</span></div><div class="pbody stack">
+<div class="line"><span>13:30</span><b>US MARKET OPENS</b></div>
+<div class="line"><span>13:36</span><b>FIRST SCHEDULED RESEARCH CHECK</b></div>
+<div class="line"><span>~15:21</span><b>EARLIEST FULL 9/21 SMA*</b></div>
+<div class="line"><span>20:00</span><b>REGULAR MARKET CLOSE</b></div>
+<div class="info">*Needs 22 consecutive five-minute IEX candles. Missing IEX bars will delay or block an assessment. Outside market hours the scanner should skip. Today is not a promise of profitable signals.</div>
+<div class="locked">No Alpaca order-submission API is enabled; no real money is connected.</div></div></section>
+</div></section>
 <section id="view-risk" class="view hidden"><section class="panel" style="margin-bottom:12px">
 <div class="phead"><b>PRE-TRADE INTELLIGENCE / PAPER</b><span>READ-ONLY</span></div>
 <div class="pbody stack">
