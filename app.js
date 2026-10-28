@@ -6,6 +6,7 @@ const PUBLISHABLE_KEY='sb_publishable_DwjlTvNC2g6302A5T_8Z5Q_yGqANv_-';
 const API=PROJECT_URL+'/functions/v1/iihq-mobile?action=dashboard';
 const ALPACA_API=PROJECT_URL+'/functions/v1/iihq-alpaca-read?action=';
 const FRED_API=PROJECT_URL+'/functions/v1/iihq-fred?action=overview';
+const OPPORTUNITY_URL=PROJECT_URL+'/functions/v1/iihq-opportunity-radar?action=overview';
 const client=createClient(PROJECT_URL,PUBLISHABLE_KEY,{auth:{persistSession:true,storage:window.sessionStorage,autoRefreshToken:true,detectSessionInUrl:true}});
 const $=id=>document.getElementById(id);
 // Add-to-Home-Screen iPhone web-app support. Public assets only are cached by sw.js.
@@ -1040,7 +1041,11 @@ function socialCard(record){
 }
 async function refreshSocial(){
  if(!ownerApproved){
-  $('socialState').textContent='OWNER SIGN-IN REQUIRED';
+  $('oppState').textContent='OWNER LOGIN REQUIRED';
+ $('oppMeta').textContent='Private shortlist requires owner login';
+ $('oppChecked').textContent='—';$('oppSetups').textContent='—';$('oppWatching').textContent='—';
+ $('oppCandidates').textContent='No owner-only opportunity information shown.';
+ $('socialState').textContent='OWNER SIGN-IN REQUIRED';
   $('socialDetail').textContent='Only your authorised Investing HQ account can view saved observations.';
   overlay(true);return;
  }
