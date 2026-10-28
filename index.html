@@ -29,6 +29,64 @@
 .actions{display:flex;gap:8px;flex-wrap:wrap}.btn{background:#18372b;color:var(--green);border:1px solid #36654a;padding:10px 13px;border-radius:6px;font-size:12px;font-weight:800;text-decoration:none;display:inline-flex;align-items:center;justify-content:center}.btn:hover{background:#214c38}.warning{color:var(--orange)}.locked{color:#91aca6;background:#152023;border:1px solid #273c3d;border-radius:6px;font-size:11px;padding:11px 12px}
 .bottom{font:10px ui-monospace,monospace;color:#78918b;margin-top:20px;line-height:1.8}
 
+/* Design v2: calm visual hierarchy and mobile navigation */
+:root{--bg:#0a1113;--layer:#101b1d;--layer2:#142124;--stroke:#29423e;--ink:#e9f3ee;--muted:#a3b7b1}
+body{background:var(--bg)}.shell{max-width:1330px;padding-top:18px}
+.topinner{max-width:1330px;min-height:71px}.logo{width:40px;height:40px}
+.nav{align-items:stretch;gap:6px;padding-bottom:3px;overflow:visible;flex-wrap:wrap;margin-bottom:24px}
+.nav button,.nav summary{border:1px solid transparent;border-radius:9px;background:transparent;color:#a5bbb4;font:700 13px system-ui,sans-serif;padding:12px 17px;white-space:nowrap;letter-spacing:0}
+.nav button.active,.nav button[aria-current="page"]{border-color:#406c57;background:#173529;color:#a7f1c8;box-shadow:none}
+.nav button:hover,.nav summary:hover{background:#172927}
+.nav-more{position:relative;margin-left:auto}.nav-more summary{cursor:pointer;list-style:none;display:flex;gap:7px;align-items:center}.nav-more summary::-webkit-details-marker{display:none}
+.nav-more summary:after{content:'⌄';color:#9ed3b1}
+.nav-more[open] summary{background:#173529;border-color:#3a5d4e;color:#b2f2ce}
+.nav-more-items{position:absolute;right:0;top:calc(100% + 6px);min-width:230px;padding:7px;background:#162326;border:1px solid #3a5952;border-radius:12px;box-shadow:0 18px 45px #000b;z-index:12;display:grid;gap:3px}
+.nav-more-items button{text-align:left;width:100%;font-size:13px}
+.bread{padding:0 3px;margin-bottom:19px}.bread h1{font-size:25px;letter-spacing:-.8px}.bread p{font-size:11px;line-height:1.55}
+.panel{border-radius:13px}.phead{padding:15px 17px;min-height:52px}.phead b{letter-spacing:.06em;font-size:12px}.pbody{padding:18px}
+.bigstat{font-size:25px}.tiny{font-size:12px;line-height:1.65}.info,.locked{font-size:12px;line-height:1.65;padding:13px 14px}
+.line{padding:13px 8px;font-size:13px}.line b{font-size:12px;overflow-wrap:anywhere;text-align:right}
+.metric .k{font-size:11px}.metric .v{font-size:15px}.workspace{gap:14px;margin-top:14px}.grid{gap:14px}
+.btn,button.secondary{border-radius:8px;min-height:41px}
+.ov-hero{background:linear-gradient(127deg,#14372b 0%,#102226 50%,#111b20 100%);border:1px solid #3b6754;border-radius:16px;padding:23px;display:grid;gap:14px}
+.ov-eyebrow{font:700 11px ui-monospace,monospace;letter-spacing:.065em;color:#a5c7b8}
+.ov-equity{font-size:clamp(38px,5vw,60px);font-weight:800;line-height:1.06;letter-spacing:-.048em;font-variant-numeric:tabular-nums}
+.ov-change{font:600 15px ui-monospace,monospace}.ov-good{color:var(--green)}.ov-bad{color:var(--red)}.ov-muted{color:var(--muted)}
+.ov-chart{height:236px;border:1px solid #2b4a41;border-radius:11px;background:linear-gradient(#24483935 1px,transparent 1px) 0 0/100% 30%;display:grid;place-items:center;padding:10px}
+.ov-chart svg{width:100%;height:100%;display:block}
+.ov-ranges{display:flex;gap:7px;flex-wrap:wrap}
+.ov-ranges button{padding:9px 13px;border:1px solid #37544c;border-radius:8px;background:#132423;color:#abc7b9;font-size:13px;min-width:51px}
+.ov-ranges button.active{background:#24533d;color:#b4f7ce;border-color:#519c74}
+.ov-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.ov-stat{border-radius:11px;border:1px solid #294740;background:#142222;padding:15px;min-width:0}
+.ov-stat .ov-eyebrow{font-size:10px;line-height:1.5;margin-bottom:9px}
+.ov-stat b{font:700 19px ui-monospace,monospace;overflow-wrap:anywhere}
+.ov-wrap{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(290px,.8fr);gap:14px}
+.ov-position{display:grid;grid-template-columns:1fr auto;gap:12px;padding:15px 2px;border-bottom:1px solid #29423e;align-items:center}
+.ov-position:last-child{border-bottom:0}.ov-position strong{font-size:16px}
+.ov-position small{display:block;color:var(--muted);font-size:12px;margin-top:5px}
+.ov-position .right{text-align:right;font:13px ui-monospace,monospace}
+.health-items{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.health-tile{padding:16px;background:#142222;border:1px solid #294540;border-radius:12px;min-width:0}
+.health-tile b{font-size:15px}.health-tile p{font-size:12px;line-height:1.6;color:var(--muted);overflow-wrap:anywhere}
+.health-code{font:12px ui-monospace,monospace}
+@media(max-width:750px){
+ .topinner{min-height:64px}.tickerbar{display:none}
+ .shell{padding:13px 12px 75px}
+ .nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) auto;gap:4px;flex-wrap:nowrap;margin-bottom:20px}
+ .nav>button{padding:12px 4px;font-size:11px;letter-spacing:0;min-width:0}
+ .nav-more{margin:0;min-width:0}.nav-more summary{padding:12px 7px;font-size:11px;justify-content:center}
+ .nav-more-items{right:0;min-width:195px}.nav-more-items button{font-size:13px;padding:12px}
+ .bread h1{font-size:23px}.bread .scope{font-size:9px}
+ .phead{padding:14px 15px}.pbody{padding:15px}
+ .ov-wrap{grid-template-columns:1fr}.ov-hero{padding:18px}
+ .ov-equity{font-size:43px}.ov-chart{height:207px}.ov-stats{gap:7px}
+ .ov-stat{padding:11px}.ov-stat b{font-size:14px}
+ .health-items{grid-template-columns:1fr}
+ .rightcol{grid-template-columns:1fr}.metric .v{font-size:13px}
+}
+
+
 /* FRED economic cards: no inline text run-on, readable even on narrow iPhones. */
 .fred-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:4px 0 8px}
 .fred-card{min-width:0;border:1px solid #304d48;border-radius:9px;padding:15px;background:#111f21;display:flex;flex-direction:column;gap:10px;overflow-wrap:anywhere}
@@ -48,9 +106,50 @@
 <header class="top"><div class="topinner"><div class="brand"><div class="logo">II</div><div><div class="bt">INVESTING INTELLIGENCE HQ</div><div class="sub">MARKETS &nbsp;//&nbsp; RESEARCH &nbsp;//&nbsp; EXECUTION</div></div></div><div class="topright"><span class="badge" id="feedBadge"><span class="dot"></span>FEED LOCKED</span><button class="acc" id="accountOpen">ACCOUNT / LOCKED</button></div></div></header>
 <div class="tickerbar"><div class="tickerinner" id="tickerbar" aria-label="Market watchlist"><span class="ticker">MARKET DATA NOT CONNECTED — NO LIVE PRICES</span></div></div>
 <main class="shell">
-<nav class="nav" id="nav" aria-label="Terminal sections"><button class="active" data-tab="markets">01 &nbsp; MARKETS</button><button data-tab="research">02 &nbsp; RESEARCH</button><button data-tab="strategies">03 &nbsp; STRATEGY LAB</button><button data-tab="paper">04 &nbsp; PAPER TRADING</button><button data-tab="risk">05 &nbsp; RISK / AUDIT</button><button data-tab="ops">06 &nbsp; OPENING CHECK</button><button data-tab="discover">07 &nbsp; DISCOVERY JOURNAL</button></nav>
-<div class="bread"><div><h1 id="viewTitle">Market overview</h1><p id="marketClock">TIME — · US CASH SESSION —</p></div><div class="scope">PAPER ONLY<br>TRADING DISABLED</div></div>
-<section id="view-markets" class="view">
+<nav class="nav" id="nav" aria-label="Main navigation"><button class="active" data-tab="overview" type="button">Home</button><button data-tab="markets" type="button">Markets</button><button data-tab="discover" type="button">Discover</button><button data-tab="research" type="button">Research</button><details id="moreNav" class="nav-more"><summary>More</summary><div class="nav-more-items"><button type="button" data-tab="strategies">Strategy lab</button><button type="button" data-tab="paper">Paper trading</button><button type="button" data-tab="risk">Risk &amp; audit</button><button type="button" data-tab="ops">Opening check</button><button type="button" data-tab="control">Data control centre</button></div></details></nav>
+<div class="bread"><div><h1 id="viewTitle">Your portfolio</h1><p id="marketClock">TIME — · US CASH SESSION —</p></div><div class="scope">PAPER ONLY<br>TRADING DISABLED</div></div>
+<section id="view-overview" class="view">
+<div class="ov-wrap">
+ <div class="stack">
+  <div class="ov-hero">
+   <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+    <div class="ov-eyebrow">ALPACA · PAPER ACCOUNT · USD</div><span class="statusTag">VIRTUAL FUNDS ONLY</span>
+   </div>
+   <div class="ov-equity" id="ovBalance">Sign in</div>
+   <div class="ov-change ov-muted" id="ovDay">Your paper portfolio will appear here.</div>
+   <div class="tiny mono" id="ovSnapshotTime">Broker-reported balance, refreshed securely after owner login.</div>
+   <div class="ov-chart" id="ovChart" role="img" aria-label="Alpaca paper portfolio equity history"><span class="tiny">Equity chart awaiting verified broker history.</span></div>
+   <div class="ov-ranges" id="ovRanges" aria-label="Chart time range">
+    <button type="button" data-period="1D">1D</button>
+    <button type="button" data-period="1W">1W</button>
+    <button class="active" type="button" data-period="1M">1M</button>
+    <button type="button" data-period="3M">3M</button>
+    <button type="button" data-period="1A">1Y</button>
+   </div>
+  </div>
+  <div class="ov-stats">
+   <div class="ov-stat"><div class="ov-eyebrow">VIRTUAL CASH</div><b id="ovCash">—</b></div>
+   <div class="ov-stat"><div class="ov-eyebrow">IN STOCKS</div><b id="ovInvested">—</b></div>
+   <div class="ov-stat"><div class="ov-eyebrow">BUYING POWER*</div><b id="ovBuying">—</b></div>
+  </div>
+  <div class="tiny">*Buying power may include margin. It is <b>not</b> the same as available cash. Balance and chart are virtual USD, not real GBP holdings.</div>
+ </div>
+ <div class="stack">
+  <section class="panel"><div class="phead"><b>YOUR PAPER HOLDINGS</b><span id="ovPositionCount">—</span></div>
+   <div class="pbody"><div id="ovPositions" class="stack" style="gap:0">Sign in to see your broker-reported positions.</div></div>
+  </section>
+  <section class="panel"><div class="phead"><b>REAL INVESTMENTS</b><span>SEPARATE</span></div>
+   <div class="pbody stack">
+    <div class="info">Your Robinhood screenshot shows PLTR and DIS. It is <b>not a live connection</b>, so the balances in this portfolio are <b>Alpaca paper money only</b>. We won't merge them or change your real holdings.</div>
+    <div class="tiny">To include live-money holdings later, we'll need an authorised read-only connector or a separately labelled manual tracker.</div>
+   </div>
+  </section>
+  <div class="actions"><button class="btn" id="ovRefresh" type="button">REFRESH ACCOUNT ↻</button><button class="secondary" id="ovOpenPaper" type="button">PAPER ORDER HISTORY</button></div>
+  <div class="locked" id="ovStatus">Owner login required. This page cannot submit orders.</div>
+ </div>
+</div>
+</section>
+<section id="view-markets" class="view hidden">
 <div class="grid">
 <section class="panel leftcol"><div class="phead"><b>WATCHLIST / US</b><span id="watchCount">—</span></div><form class="watchTools" id="watchForm"><input id="addSymbol" placeholder="ADD TICKER · e.g. AAPL" aria-label="Add ticker" maxlength="8" autocapitalize="characters"><button class="secondary" aria-label="Add ticker" type="submit">+</button></form><div class="headrow"><span>SYMBOL</span><span>INSTRUMENT</span><span>LAST</span></div><div class="stocks" id="watchStocks"></div><div class="footerNote" id="watchFooter">Watchlist stored on this device · sign in for IEX market prices</div></section>
 <section class="panel midcol"><div class="phead"><b>INSTRUMENT WORKSPACE</b><button id="refreshQuotes" class="secondary" style="padding:5px 9px;font-size:10px" type="button">↻ REFRESH IEX</button></div><div class="instrument"><div class="iname"><div><h2 id="chosenSymbol">AAPL</h2><p class="company" id="chosenName">Apple Inc.</p></div><span class="statusTag" id="instrumentFeedTag">IEX / LOCKED</span></div><div class="pricebig mono">— <span style="font-size:12px;color:var(--muted)">USD</span></div><div class="tiny" id="quoteSource">To view Alpaca IEX prices, sign in to your private paper-data connection. Quotes may not represent the whole US market.</div><div class="tiny mono" id="feedRefreshAt" style="margin-top:6px">AUTO UPDATE: 20 SECONDS WHILE MARKETS TAB IS VISIBLE · NOT TICK STREAMING</div><div class="chart" id="priceChart"><div><strong>NO VERIFIED PRICE DATA</strong><small>Chart, intraday candles and volume will populate from the future authorised market feed. No prices are simulated.</small></div></div><div class="axes"><span>LAST AVAILABLE</span><span>US SESSION · 5 MIN</span><span>CLOSE</span></div><div class="metricrow"><div class="metric"><div class="k">DAY CHANGE</div><div class="v">—</div></div><div class="metric"><div class="k">DAY VOLUME</div><div class="v">—</div></div><div class="metric"><div class="k">VWAP</div><div class="v">—</div></div></div></div></section>
@@ -237,6 +336,36 @@
    </div>
   </section>
  </div>
+</section>
+<section id="view-control" class="view hidden">
+<div class="stack">
+ <section class="panel"><div class="phead"><b>MARKET DATA · CONTROL CENTRE</b><span>SYSTEM HEALTH</span></div>
+  <div class="pbody stack">
+   <div class="info">Check whether real data sources and research scanners are responding. A closed US market is normal; stale prices during an open session need investigation.</div>
+   <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+    <div><div class="ov-eyebrow">MARKET STATUS</div><div id="ctrlMarket" class="bigstat">NOT CHECKED</div></div>
+    <button class="btn" id="ctrlRefresh" type="button">VERIFY SOURCES ↻</button>
+   </div>
+   <div class="tiny mono" id="ctrlUpdated">Source timestamps awaiting owner sign-in.</div>
+   <div class="ov-stats">
+    <div class="ov-stat"><div class="ov-eyebrow">RECENT QUOTES</div><b id="ctrlFresh">—</b></div>
+    <div class="ov-stat"><div class="ov-eyebrow">SIGNAL RECORDS</div><b id="ctrlScans">—</b></div>
+    <div class="ov-stat"><div class="ov-eyebrow">MISSING FEEDS</div><b id="ctrlMissing">—</b></div>
+   </div>
+   <div class="locked" id="ctrlVerdict">No result verified. Automated order submission remains disabled.</div>
+  </div>
+ </section>
+ <div class="workspace" style="margin-top:0">
+  <section class="panel"><div class="phead"><b>SCANNER HEARTBEATS</b><span>CLOUD</span></div><div class="pbody stack" id="ctrlScanners">Awaiting scheduler status.</div></section>
+  <section class="panel"><div class="phead"><b>FIVE-MINUTE RESEARCH CHECKS</b><span>QUALITY</span></div><div class="pbody stack" id="ctrlSignals">No verified signals loaded.</div></section>
+ </div>
+ <section class="panel"><div class="phead"><b>MARKET-DATA COVERAGE</b><span>ALPACA IEX</span></div>
+  <div class="pbody"><div class="health-items" id="ctrlQuotes"><div class="locked">Waiting for source timestamps.</div></div>
+   <div class="tiny" style="margin-top:12px">IEX is one US exchange, not full consolidated market data. A functioning scanner does not prove that its strategy is profitable.</div>
+  </div>
+ </section>
+ <div class="locked">Research diagnostics only. Neither this screen nor the paper portfolio can place Alpaca orders.</div>
+</div>
 </section>
 <footer class="bottom">IIHQ / INDEPENDENT INVESTMENT RESEARCH SOFTWARE · NOT AFFILIATED WITH JPMORGAN CHASE OR BLOOMBERG<br>US PRICES FROM ALPACA IEX ONLY (AUTHORISED USERS) · NO FULL-MARKET TAPE · PAPER FIGURES IN USD</footer>
 </main>
