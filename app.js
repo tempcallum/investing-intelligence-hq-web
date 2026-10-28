@@ -641,6 +641,35 @@ function createFredCard(item){
  card.append(label,value,explain,date,prev,link);
  return card;
 }
+function renderFredQuality(series){
+ const byId=new Map(series.map(x=>[x.id,x]));
+ const ids=['DGS2','DGS10','T10Y2Y'];
+ const rows=ids.map(id=>byId.get(id));
+ const note=$('fredQuality');
+ if(rows.some(x=>x?.status!=='OK'||!x?.latest?.observation_date)){
+   note.textContent='DATA QUALITY · One or more Treasury measures lacks a verified observation. Do not infer a current yield spread from incomplete data.';
+   return;
+ }
+ const dates=rows.map(x=>x.latest.observation_date);
+ const sameDate=dates.every(date=>date===dates[0]);
+ if(!sameDate){
+   note.textContent='DATE MISMATCH · Two-year yield '+dates[0]+', ten-year yield '+dates[1]+
+     ', published yield-spread observation '+dates[2]+
+     '. The latest figures do not all describe the same date; do not subtract or compare them as a single market snapshot.';
+   return;
+ }
+ const a=Number(rows[0].latest.value),b=Number(rows[1].latest.value),c=Number(rows[2].latest.value);
+ if(![a,b,c].every(Number.isFinite)){
+   note.textContent='DATA QUALITY · Yield observations contain invalid numerical data.';
+   return;
+ }
+ const gap=Math.abs((b-a)-c);
+ note.textContent=gap>0.1?
+   'SOURCE DISAGREEMENT · Same observation date, but the reported spread differs by '+gap.toFixed(2)+
+     ' percentage points from the two displayed yields. Verify FRED definitions and revisions before using it.':
+   'DATA QUALITY · The two Treasury yields and yield spread share observation date '+dates[0]+
+     '. Values are internally consistent within 0.10 percentage points; later revisions may still occur.';
+}
 async function loadFredOverview(){
  if(fredLoading)return;
  if(!ownerApproved){
@@ -675,6 +704,7 @@ async function loadFredOverview(){
      ' · Observation dates may lag releases and data may be revised.';
    const target=$('fredIndicators');target.replaceChildren();
    for(const item of data.series||[])target.append(createFredCard(item));
+   renderFredQuality(data.series||[]);
    fredLoaded=count===data.total_series;
  }catch(_){
    if(id!==fredRequest)return;
