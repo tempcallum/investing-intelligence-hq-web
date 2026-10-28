@@ -993,6 +993,7 @@ setInterval(()=>{if(ownerApproved&&!document.hidden&&!$('view-discover').classLi
 // SOCIAL RADAR: owner-only, sampled social evidence, never automatic broker orders.
 const SOCIAL_URL=PROJECT_URL+'/functions/v1/iihq-social-radar?action=overview';
 const SOCIAL_MARKET_URL=PROJECT_URL+'/functions/v1/iihq-market-confirm?action=overview';
+const SOCIAL_EVIDENCE_URL=PROJECT_URL+'/functions/v1/iihq-social-evidence?action=study';
 let socialBusy=false;
 function socialCard(record){
  const shell=document.createElement('div');shell.className='panel';shell.style.padding='14px';
@@ -1052,6 +1053,7 @@ async function refreshSocial(){
   const data=await reply.json();
   if(!reply.ok)throw Error(data.error||'SOCIAL_DATA_UNAVAILABLE');
   await refreshMarketEvidence(session);
+  await refreshEvidenceStudy(session);
   const runtime=data.scanner||{},latest=Array.isArray(data.latest)?data.latest:[];
   $('socialState').textContent=String(runtime.last_state||'NOT RUN').replaceAll('_',' ');
   $('socialDetail').textContent='Last scanner attempt '+dateUK(runtime.last_attempt_at)+
@@ -1076,6 +1078,8 @@ async function refreshSocial(){
   $('socialDetail').textContent='Social data could not be independently verified. Try again after the next scheduled scan.';
   $('socialCount').textContent='—';$('socialBurst').textContent='—';$('socialNew').textContent='—';
   $('socialCandidates').textContent='No social activity or trading opportunities are inferred during a source failure.';
+  $('studyStatus').textContent='SOURCE UNAVAILABLE';
+  $('studyGroups').textContent='No reliable comparison is available while social data cannot load.';
  }finally{socialBusy=false;$('socialRefresh').disabled=false}
 }
 $('socialRefresh').addEventListener('click',()=>refreshSocial().catch(()=>{}));
@@ -1133,6 +1137,54 @@ async function refreshMarketEvidence(session){
 }
 
 
+// Compare PRE-RECORDED entries only. This panel never creates, endorses, or executes orders.
+async function refreshEvidenceStudy(session){
+ const target=$('studyGroups');target.replaceChildren();
+ const unavailable=()=>{
+  $('studyStatus').textContent='INSUFFICIENT VERIFIED EVIDENCE';
+  $('studyValid').textContent='—';$('studyMeasured').textContent='—';
+  $('studyBenchmarked').textContent='—';
+  $('studyFreshness').textContent='Private study source unavailable; no values inferred.';
+  target.textContent='Could not verify the comparison cohorts.';
+ };
+ try{
+  const res=await fetch(SOCIAL_EVIDENCE_URL,{method:'GET',cache:'no-store',
+   headers:{Authorization:'Bearer '+session.access_token}});
+  if(!res.ok)throw Error('EVIDENCE_SOURCE_UNAVAILABLE');
+  const d=await res.json();
+  $('studyStatus').textContent=String(d.status||'INSUFFICIENT_EVIDENCE').replaceAll('_',' ');
+  $('studyFreshness').textContent='Calculated '+dateUK(d.as_of)+
+   ' · only first valid assessment per share per New York session'+
+   ' · '+String(d.source_rows?.market_checks??0)+' historical checked records considered';
+  $('studyValid').textContent=String(d.valid_initial_checks??0);
+  $('studyMeasured').textContent=String(d.measured_raw??0);
+  $('studyBenchmarked').textContent=String(d.measured_vs_spy??0);
+  const labels={MOMENTUM_HIGH_SOCIAL:'Momentum + stronger social',
+   MOMENTUM_LOW_SOCIAL:'Momentum + weaker social',
+   NO_MOMENTUM_HIGH_SOCIAL:'No momentum + stronger social',
+   NO_MOMENTUM_LOW_SOCIAL:'No momentum + weaker social'};
+  const pct=x=>x===null||x===undefined||!Number.isFinite(Number(x))?'—':
+   (Number(x)>=0?'+':'')+Number(x).toFixed(2)+'%';
+  for(const g of Array.isArray(d.groups)?d.groups:[]){
+   const item=document.createElement('div');item.className='panel';item.style.padding='12px';
+   const title=document.createElement('b');title.textContent=labels[g.label]||String(g.label||'Unknown');
+   const detail=document.createElement('div');detail.className='tiny';detail.style.marginTop='5px';
+   detail.textContent=String(g.eligible_initial??0)+' valid initial observations · '+
+    String(g.measured??0)+' followed up · '+String(g.benchmarked??0)+' compared with SPY'+
+    ' · mean raw movement '+pct(g.mean_raw_pct)+
+    ' · mean above/below SPY '+pct(g.mean_excess_spy_pct);
+   item.append(title,detail);target.append(item);
+  }
+  const c=d.comparison||{};
+  $('studyConclusion').textContent=
+   'Same half-hour comparisons: '+String(c.matched_same_half_hour_buckets??0)+
+   '. Mean matched SPY-adjusted difference: '+
+   ((c.matched_same_half_hour_buckets??0)>=10?pct(c.matched_mean_excess_difference_pct):
+    'INSUFFICIENT MATCHED OBSERVATIONS')+
+   '. We need at least 30 measured SPY-relative outcomes in EACH momentum group, on 10 trading days and 10 matched time buckets merely to consider a formal review. Not proof of an edge; no order authority.';
+ }catch(_){unavailable()}
+}
+
 // Clear every private value when logged out or if the owner check fails.
 function clearPrivateAccountUI(){
  briefReports=[];
@@ -1143,6 +1195,11 @@ function clearPrivateAccountUI(){
  $('marketChecked').textContent='—';$('marketMomentum').textContent='—';$('marketMeasured').textContent='—';
  $('marketConfirmStatus').textContent='Owner login required.';
  $('marketEvidence').textContent='Private market evidence locked.';
+ $('studyStatus').textContent='OWNER LOGIN REQUIRED';
+ $('studyFreshness').textContent='Sign in for the private study.';
+ $('studyValid').textContent='—';$('studyMeasured').textContent='—';$('studyBenchmarked').textContent='—';
+ $('studyGroups').textContent='No private analysis available.';
+ $('studyConclusion').textContent='No paper or real orders can be authorised by research results.';
  $('briefTitle').textContent='Sign in to see your day';
  $('briefMeta').textContent='Private paper account report';
  $('briefContent').textContent='Sign in to read your daily recap.';
