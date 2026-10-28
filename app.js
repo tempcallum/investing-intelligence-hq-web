@@ -7,7 +7,18 @@ const API=PROJECT_URL+'/functions/v1/iihq-mobile?action=dashboard';
 const ALPACA_API=PROJECT_URL+'/functions/v1/iihq-alpaca-read?action=';
 const FRED_API=PROJECT_URL+'/functions/v1/iihq-fred?action=overview';
 const OPPORTUNITY_URL=PROJECT_URL+'/functions/v1/iihq-opportunity-radar?action=overview';
-const client=createClient(PROJECT_URL,PUBLISHABLE_KEY,{auth:{persistSession:true,storage:window.sessionStorage,autoRefreshToken:true,detectSessionInUrl:true}});
+// Migrate the former tab-scoped session before the Supabase client reads storage.
+// This preserves an existing owner login when Safari permits persistent storage.
+// Do not persist account passwords, keys or arbitrary user input.
+try{
+ const authKey='sb-'+new URL(PROJECT_URL).hostname.split('.')[0]+'-auth-token';
+ const previous=window.sessionStorage.getItem(authKey);
+ if(previous&&!window.localStorage.getItem(authKey))window.localStorage.setItem(authKey,previous);
+ if(window.localStorage.getItem(authKey))window.sessionStorage.removeItem(authKey);
+}catch(_){/* Browser storage unavailable: sign-in will be required again. */}
+const client=createClient(PROJECT_URL,PUBLISHABLE_KEY,{
+ auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}
+});
 const $=id=>document.getElementById(id);
 const opsEventDate=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',
  year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
@@ -124,20 +135,50 @@ updateClocks();setInterval(updateClocks,60000);
 renderWatch();setSymbol(selected);
 
 function note(t,error=false){$('authMessage').textContent=t;$('authMessage').className='msg'+(error?' error':'')}
-function overlay(open){$('authOverlay').classList.toggle('hidden',!open)}
+function overlay(open){
+ // The dashboard stays behind the login gate unless the owner is verified.
+ if(!open&&!ownerApproved)return;
+ $('authOverlay').classList.toggle('hidden',!open);
+}
 $('accountOpen').addEventListener('click',()=>overlay(true));$('authClose').addEventListener('click',()=>overlay(false));
 $('authOverlay').addEventListener('click',e=>{if(e.target===$('authOverlay'))overlay(false)});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')overlay(false)});
 $('paperLogin').addEventListener('click',()=>overlay(true));
 async function syncAuth(){
-  const {data:{session}}=await client.auth.getSession();
+ // The first screen is always a login / session-check gate until the owner check succeeds.
+ if(!ownerApproved){
+  overlay(true);
+  $('authLoading').classList.remove('hidden');
+ }
+ try{
+  const {data:{session},error}=await client.auth.getSession();
+  if(error)throw error;
   signedIn=!!session;
+  $('authLoading').classList.add('hidden');
   $('loginForm').classList.toggle('hidden',signedIn);
   $('signedIn').classList.toggle('hidden',!signedIn);
   $('accountOpen').textContent=signedIn?'ACCOUNT / SIGNED IN':'ACCOUNT / LOCKED';
-  if(!session){clearPrivateAccountUI();ownerApproved=false;$('instrumentFeedTag').textContent='IEX / LOCKED';$('paperEquity').textContent='ACCOUNT LOCKED';$('paperMessage').textContent='Sign in to inspect private trading status. Alpaca is not connected.';return}
+  if(!session){
+   ownerApproved=false;
+   $('authClose').classList.add('hidden');
+   clearPrivateAccountUI();
+   $('instrumentFeedTag').textContent='IEX / LOCKED';
+   $('paperEquity').textContent='ACCOUNT LOCKED';
+   $('paperMessage').textContent='Sign in to inspect private trading status. Alpaca is not connected.';
+   $('password').value='';
+   note('Sign in to open your private dashboard. Your password is never stored by this app.');
+   overlay(true);
+   return;
+  }
   $('userEmail').textContent=session.user.email||'Authenticated user';
   await refreshDesk(session.access_token);
+ }catch(_){
+  $('authLoading').classList.add('hidden');
+  if(!signedIn)$('loginForm').classList.remove('hidden');
+  $('authClose').classList.add('hidden');
+  overlay(true);
+  note('Could not verify your saved sign-in. Check your connection, then sign in or retry.',true);
+ }
 }
 async function refreshDesk(token){
  try{
@@ -145,6 +186,7 @@ async function refreshDesk(token){
    const data=await r.json();
    if(!r.ok){
      clearPrivateAccountUI();ownerApproved=false;
+     $('authClose').classList.add('hidden');overlay(true);
      if(data.error==='OWNER_NOT_ENROLLED'){
        note('Your login succeeded, but this account is not yet enrolled as the authorised owner. Ask ChatGPT to complete the owner check.');
        $('paperEquity').textContent='OWNER APPROVAL PENDING';
@@ -156,6 +198,8 @@ async function refreshDesk(token){
      return;
    }
    ownerApproved=true;
+   $('authClose').classList.remove('hidden');
+   overlay(false); // Verified owner: show the dashboard immediately.
    const enabled=data.settings?.paper_enabled===true;
    $('riskEnabled').textContent=enabled?'YES — PAPER FLAG':'NO';
    $('auditEntries').textContent=String(data.events?.length??0)+' RECENT';
@@ -170,6 +214,7 @@ async function refreshDesk(token){
    if(!$('view-overview').classList.contains('hidden'))await refreshDailyBrief();
  }catch(_){
    clearPrivateAccountUI();ownerApproved=false;
+   $('authClose').classList.add('hidden');overlay(true);
    note('Could not load private data service. Check the connection and try again.',true);
  }
 }
@@ -186,12 +231,29 @@ $('magicLogin').addEventListener('click',async()=>{
  note(error?error.message:'If an authorised user exists, a sign-in email has been sent. This website URL must be added to Supabase Auth redirect settings.',!!error);
 });
 $('signout').addEventListener('click',async()=>{
- await client.auth.signOut();ownerApproved=false;note('Signed out.');await syncAuth();
+ const {error}=await client.auth.signOut();
+ if(error){note('Unable to sign out. Please retry.',true);return}
+ ownerApproved=false;
+ $('authClose').classList.add('hidden');
+ overlay(true);
+ note('Signed out of this device.');
+ await syncAuth();
 });
 $('paperRefresh').addEventListener('click',syncAuth);
 $('refresh').addEventListener('click',syncAuth);
-client.auth.onAuthStateChange(()=>{setTimeout(()=>syncAuth().catch(()=>note('Authentication status could not be refreshed.',true)),0)});
-syncAuth().catch(()=>note('Sign-in service not available.',true));
+$('password').addEventListener('keydown',event=>{
+ if(event.key==='Enter'){event.preventDefault();$('passwordLogin').click();}
+});
+client.auth.onAuthStateChange((event)=>{
+ // Token refreshes must not reopen the login or reload the entire research desk.
+ if(['SIGNED_IN','SIGNED_OUT','USER_UPDATED'].includes(event))
+  setTimeout(()=>syncAuth().catch(()=>note('Authentication status could not be refreshed.',true)),0);
+});
+syncAuth().catch(()=>{
+ $('authLoading').classList.add('hidden');
+ $('loginForm').classList.remove('hidden');
+ note('Sign-in service unavailable. Check your connection and retry.',true);
+});
 
 
 // READ-ONLY Alpaca PAPER provider bridge. Never writes orders, even from private account.
