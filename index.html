@@ -48,7 +48,7 @@
 <header class="top"><div class="topinner"><div class="brand"><div class="logo">II</div><div><div class="bt">INVESTING INTELLIGENCE HQ</div><div class="sub">MARKETS &nbsp;//&nbsp; RESEARCH &nbsp;//&nbsp; EXECUTION</div></div></div><div class="topright"><span class="badge" id="feedBadge"><span class="dot"></span>FEED LOCKED</span><button class="acc" id="accountOpen">ACCOUNT / LOCKED</button></div></div></header>
 <div class="tickerbar"><div class="tickerinner" id="tickerbar" aria-label="Market watchlist"><span class="ticker">MARKET DATA NOT CONNECTED — NO LIVE PRICES</span></div></div>
 <main class="shell">
-<nav class="nav" id="nav" aria-label="Terminal sections"><button class="active" data-tab="markets">01 &nbsp; MARKETS</button><button data-tab="research">02 &nbsp; RESEARCH</button><button data-tab="strategies">03 &nbsp; STRATEGY LAB</button><button data-tab="paper">04 &nbsp; PAPER TRADING</button><button data-tab="risk">05 &nbsp; RISK / AUDIT</button><button data-tab="ops">06 &nbsp; OPENING CHECK</button></nav>
+<nav class="nav" id="nav" aria-label="Terminal sections"><button class="active" data-tab="markets">01 &nbsp; MARKETS</button><button data-tab="research">02 &nbsp; RESEARCH</button><button data-tab="strategies">03 &nbsp; STRATEGY LAB</button><button data-tab="paper">04 &nbsp; PAPER TRADING</button><button data-tab="risk">05 &nbsp; RISK / AUDIT</button><button data-tab="ops">06 &nbsp; OPENING CHECK</button><button data-tab="discover">07 &nbsp; DISCOVERY JOURNAL</button></nav>
 <div class="bread"><div><h1 id="viewTitle">Market overview</h1><p id="marketClock">TIME — · US CASH SESSION —</p></div><div class="scope">PAPER ONLY<br>TRADING DISABLED</div></div>
 <section id="view-markets" class="view">
 <div class="grid">
@@ -201,6 +201,43 @@
 </div>
 </section>
 <div class="workspace" style="margin-top:0"><section class="panel"><div class="phead"><b>RISK CONTROL / AUDIT LOG</b><span>RESTRICTED</span></div><div class="pbody stack"><div class="line"><span>Trading enabled</span><b class="green" id="riskEnabled">NO</b></div><div class="line"><span>Live orders</span><b>UNSUPPORTED</b></div><div class="line"><span>Confirmed journal entries</span><b id="auditEntries">—</b></div><div class="line"><span>Alpaca</span><b>UNLINKED</b></div><div class="info" id="riskDetails">Authenticated journal entries are visible only to the enrolled owner. Never assume trading is enabled based on the appearance of this screen.</div></div></section><section class="panel"><div class="phead"><b>SECURITY BOUNDARIES</b><span>V1</span></div><div class="pbody stack"><div class="info">Public market interface; private portfolio and trading state gated behind Supabase authentication and single-owner approval. No brokerage credentials in GitHub or the browser.</div><div class="locked">A separate website origin is recommended before considering real-money integrations.</div></div></section></div></section>
+<section id="view-discover" class="view hidden">
+ <div class="workspace" style="margin-top:0">
+  <section class="panel">
+   <div class="phead"><b>MARKET-WIDE MOMENTUM DISCOVERY</b><span>OWNER · RESEARCH ONLY</span></div>
+   <div class="pbody stack">
+    <div class="info">Search beyond the usual popular tickers. An independent cloud scanner queries Alpaca's broader US gainers list every 10 minutes during the regular session, then tests available IEX quotes, spreads, liquidity and tradability. Scanning access may depend on your Alpaca data entitlement.</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+     <div><div class="signal">DISCOVERY SOURCE</div><div class="bigstat" id="discoveryState">NOT YET VERIFIED</div></div>
+     <button id="refreshJournal" class="btn" type="button">REFRESH JOURNAL ↻</button>
+    </div>
+    <div class="tiny mono" id="discoveryDetail">The scanner works on Supabase when Safari is closed. First market-hours results have not yet been verified.</div>
+    <div class="metricrow">
+     <div class="metric"><div class="k">TOP MOVERS CHECKED</div><div class="v" id="discoveryCount">—</div></div>
+     <div class="metric"><div class="k">DATA CHECKS PASS</div><div class="v" id="discoveryQualified">—</div></div>
+     <div class="metric"><div class="k">REJECTED BY FILTERS</div><div class="v" id="discoveryRejected">—</div></div>
+    </div>
+    <div class="signal">RECENT CANDIDATES — INCLUDING LESSER-KNOWN SHARES</div>
+    <div id="discoveryCandidates" class="stack"><div class="locked">Awaiting the first market-hours discovery scan. No names or prices have been fabricated.</div></div>
+    <div class="locked">DATA PASS only means provisional quote and liquidity checks passed. It is NOT a buy signal, does not verify earnings/news, and never authorises an order. Very large price spikes and thin volume are treated cautiously. Broker paper trading remains disabled.</div>
+   </div>
+  </section>
+  <section class="panel">
+   <div class="phead"><b>DECISION &amp; OUTCOME JOURNAL</b><span>UNEDITED SIGNAL HISTORY</span></div>
+   <div class="pbody stack">
+    <div class="info">We record rejected candidates as well as interesting ones. A later IEX price observation is compared with the discovery price, approximately 30 minutes afterwards, if reliable data exists. This is a raw price movement, <b>not simulated trading profit</b> or an execution record.</div>
+    <div class="metricrow">
+     <div class="metric"><div class="k">RECENT RECORDS</div><div class="v" id="journalRecords">—</div></div>
+     <div class="metric"><div class="k">FOLLOW-UPS MEASURED</div><div class="v" id="journalMeasured">—</div></div>
+     <div class="metric"><div class="k">AWAITING FOLLOW-UP</div><div class="v" id="journalPending">—</div></div>
+    </div>
+    <div class="tiny" id="journalSummary">No journal loaded. The analysis-only cloud scheduler stores records independently of this page.</div>
+    <div id="journalList" class="stack"><div class="tiny">No verified entries yet.</div></div>
+    <div class="locked">The journal is a research log, not an order blotter. It includes negative and unverified outcomes to reduce selection bias. IEX is a partial US feed, and sparse quotations can prevent a reliable 30-minute comparison. No profit predictions.</div>
+   </div>
+  </section>
+ </div>
+</section>
 <footer class="bottom">IIHQ / INDEPENDENT INVESTMENT RESEARCH SOFTWARE · NOT AFFILIATED WITH JPMORGAN CHASE OR BLOOMBERG<br>US PRICES FROM ALPACA IEX ONLY (AUTHORISED USERS) · NO FULL-MARKET TAPE · PAPER FIGURES IN USD</footer>
 </main>
 <div class="overlay hidden" id="authOverlay" role="dialog" aria-modal="true" aria-labelledby="authTitle"><div class="dialog"><div style="display:flex;align-items:center;justify-content:space-between"><h2 id="authTitle">Authorised account access</h2><button class="close" id="authClose" aria-label="Close login">×</button></div><p>Sign in only when you need private portfolio details. Public market research requires no account.</p><div id="loginForm"><label for="email">EMAIL</label><input id="email" type="email" autocomplete="email" placeholder="your@email.com"><label for="password">PASSWORD</label><input id="password" type="password" autocomplete="current-password" placeholder="Supabase Auth password"><div class="authbuttons"><button class="btn" id="passwordLogin">SIGN IN</button><button class="btn" id="magicLogin">EMAIL SIGN-IN LINK</button></div></div><div id="signedIn" class="hidden"><div class="info">Authenticated as <b id="userEmail"></b></div><div class="authbuttons"><button class="btn" id="refresh">REFRESH PRIVATE DESK</button><button class="btn" id="signout">SIGN OUT</button></div></div><p id="authMessage" class="msg">Your Supabase administration login is separate from this dashboard user. Create an Auth user in the Investing HQ project first.</p></div></div>
