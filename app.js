@@ -992,8 +992,10 @@ setInterval(()=>{if(ownerApproved&&!document.hidden&&!$('view-discover').classLi
 
 // SOCIAL RADAR: owner-only, sampled social evidence, never automatic broker orders.
 const SOCIAL_URL=PROJECT_URL+'/functions/v1/iihq-social-radar?action=overview';
+const SOCIAL_MARKET_URL=PROJECT_URL+'/functions/v1/iihq-market-confirm?action=overview';
+const MARKET_CONFIRM_URL=PROJECT_URL+'/functions/v1/iihq-market-confirm?action=overview';
 let socialBusy=false;
-function socialCard(record){
+function socialCard(record,market){
  const shell=document.createElement('div');shell.className='panel';shell.style.padding='14px';
  const top=document.createElement('div');top.style.display='flex';top.style.justifyContent='space-between';
  top.style.alignItems='center';top.style.gap='10px';top.style.flexWrap='wrap';
@@ -1017,8 +1019,551 @@ function socialCard(record){
  shell.append(metrics);
  const note=document.createElement('div');note.className='tiny';note.style.marginTop='6px';
  note.textContent='Latest matching post '+dateUK(record.latest_post_at)+
-  ' · independent price/liquidity/earnings checks NOT COMPLETE · NO TRADE';
+  ' · company earnings/news NOT VERIFIED · NO TRADE';
  shell.append(note);
+ const m=document.createElement('div');m.className='info';m.style.marginTop='10px';
+ if(!market){
+  m.textContent='Market cross-check: NOT YET LINKED for this social sample. No price confirmation inferred.';
+ }else{
+  const label=String(market.market_state||'UNVERIFIED').replaceAll('_',' ');
+  const reasons=Array.isArray(market.source_reasons)?market.source_reasons:[];
+  m.textContent='IEX '+label+' · checked '+dateUK(market.assessed_at)+
+   ' · observed price '+(market.price_usd==null?'unavailable':'
+ const actions=document.createElement('div');actions.className='actions';actions.style.marginTop='11px';
+ const research=document.createElement('button');research.type='button';research.className='secondary';
+ research.textContent='ADD / OPEN RESEARCH WATCHLIST';
+ research.addEventListener('click',()=>{
+  addResearchTicker(String(record.symbol||''));
+  const markets=document.querySelector('#nav button[data-tab="markets"]');if(markets)markets.click();
+ });
+ actions.append(research);
+ for(const x of (Array.isArray(record.examples)?record.examples:[]).slice(0,2)){
+  const url=String(x?.url||'');
+  if(!/^https:\/\/bsky\.app\/profile\/did%3A[A-Za-z0-9%._-]+\/post\/[A-Za-z0-9]+$/.test(url))continue;
+  const a=document.createElement('a');a.className='btn';a.textContent='SOURCE POST ↗';
+  a.href=url;a.target='_blank';a.rel='noopener noreferrer';actions.append(a);
+ }
+ shell.append(actions);
+ return shell;
+}
+async function refreshSocial(){
+ if(!ownerApproved){
+  $('socialState').textContent='OWNER SIGN-IN REQUIRED';
+  $('socialDetail').textContent='Only your authorised Investing HQ account can view saved observations.';
+  overlay(true);return;
+ }
+ if(socialBusy)return;
+ socialBusy=true;$('socialRefresh').disabled=true;
+ try{
+  const {data:{session}}=await client.auth.getSession();if(!session)throw Error('SESSION_UNAVAILABLE');
+  const reply=await fetch(SOCIAL_URL,{method:'GET',cache:'no-store',
+   headers:{Authorization:'Bearer '+session.access_token}});
+  const data=await reply.json();
+  if(!reply.ok)throw Error(data.error||'SOCIAL_DATA_UNAVAILABLE');
+  await refreshMarketEvidence(session);
+  const runtime=data.scanner||{},latest=Array.isArray(data.latest)?data.latest:[];
+  let market=null,marketIssue=null;
+  try{
+   const res=await fetch(MARKET_CONFIRM_URL,{method:'GET',cache:'no-store',
+    headers:{Authorization:'Bearer '+session.access_token}});
+   if(!res.ok)throw Error('MARKET_CONFIRM_UNAVAILABLE');
+   market=await res.json();
+  }catch(_){marketIssue='Independent IEX checks unavailable';}
+  const checks=Array.isArray(market?.by_symbol)?market.by_symbol:[];
+  const checked=new Map(checks.map(x=>[x.symbol,x]));
+  const mRun=market?.scanner||{};
+  $('marketChecked').textContent=market?String(mRun.symbols_checked??0):'—';
+  $('marketMomentum').textContent=market?String(checks.filter(x=>x.market_state==='MOMENTUM_OBSERVED').length):'—';
+  $('marketMeasured').textContent=market?String(checks.filter(x=>x.outcome_state==='MEASURED').length):'—';
+  $('marketConfirmStatus').textContent=market?
+    'Market check '+String(mRun.last_state||'NOT RUN').replaceAll('_',' ')+' · '+dateUK(mRun.last_attempt_at)+
+    ' · last run measured '+String(mRun.outcomes_measured??0)+' follow-up(s)'+
+    (mRun.last_reason?' · '+String(mRun.last_reason):'')+
+    ' · source Alpaca IEX, one US exchange':
+    marketIssue+' · nothing assumed to have passed';
+  const evidence=$('marketEvidence');evidence.replaceChildren();
+  for(const x of checks.slice(0,6)){
+   const entry=document.createElement('div');entry.className='line';
+   const label=document.createElement('span');label.textContent=String(x.symbol||'—')+
+    ' · '+dateUK(x.assessed_at);
+   const value=document.createElement('b');
+   value.textContent=String(x.market_state||'UNVERIFIED').replaceAll('_',' ')+
+    (x.momentum_30m_pct==null?'':' · '+Number(x.momentum_30m_pct).toFixed(2)+'% / 30m')+
+    (x.outcome_state==='MEASURED'&&x.outcome_30m_pct!=null?
+      ' · follow-up '+Number(x.outcome_30m_pct).toFixed(2)+'%':'');
+   entry.append(label,value);evidence.append(entry);
+  }
+  if(!checks.length)evidence.textContent=market?'No market comparisons saved yet. Trading remains OFF.':
+   'Market comparison provider could not be verified; nothing is approved.';
+  $('socialState').textContent=String(runtime.last_state||'NOT RUN').replaceAll('_',' ');
+  $('socialDetail').textContent='Last scanner attempt '+dateUK(runtime.last_attempt_at)+
+   ' · SOURCE: BLUESKY PUBLIC SEARCH'+
+   (runtime.last_reason?' · '+String(runtime.last_reason).replaceAll('_',' '):'')+
+   ' · No market or order authority.';
+  $('socialCount').textContent=String(runtime.symbols_checked??0);
+  $('socialBurst').textContent=String(latest.filter(x=>x.attention_state==='BURST').length);
+  $('socialNew').textContent=String(runtime.new_discoveries??0);
+  const cards=$('socialCandidates');cards.replaceChildren();
+  const order={BURST:0,EARLY_INTEREST:1,INSUFFICIENT_HISTORY:2,THIN_SAMPLE:3};
+  latest.sort((a,b)=>(order[a.attention_state]??9)-(order[b.attention_state]??9)||
+   Number(b.posts_seen||0)-Number(a.posts_seen||0));
+  for(const record of latest.slice(0,12)){
+   const check=checked.get(record.symbol);
+   // A previous market check cannot be silently presented as confirmation of a new social observation.
+   const same=check&&Date.parse(check.social_scanned_at)===Date.parse(record.scanned_at);
+   cards.append(socialCard(record,same?check:null));
+  }
+  if(!latest.length){
+   const empty=document.createElement('div');empty.className='locked';
+   empty.textContent='No validated social source observations yet. '+String(runtime.last_reason||'Scheduled collection has not completed.');
+   cards.append(empty);
+  }
+ }catch(_){
+  $('socialState').textContent='SOURCE OR ACCESS UNAVAILABLE';
+  $('socialDetail').textContent='Social data could not be independently verified. Try again after the next scheduled scan.';
+  $('socialCount').textContent='—';$('socialBurst').textContent='—';$('socialNew').textContent='—';
+  $('marketChecked').textContent='—';$('marketMomentum').textContent='—';$('marketMeasured').textContent='—';
+  $('marketConfirmStatus').textContent='Social source or authentication unavailable.';
+  $('marketEvidence').textContent='No verified market comparisons available.';
+  $('socialCandidates').textContent='No social activity or trading opportunities are inferred during a source failure.';
+ }finally{socialBusy=false;$('socialRefresh').disabled=false}
+}
+$('socialRefresh').addEventListener('click',()=>refreshSocial().catch(()=>{}));
+setInterval(()=>{if(ownerApproved&&!document.hidden&&!$('view-social').classList.contains('hidden'))refreshSocial().catch(()=>{})},90000);
+
+// The second source is independent and can fail without inventing social or market results.
+async function refreshMarketEvidence(session){
+ const root=$('marketEvidence');root.replaceChildren();
+ $('marketConfirmStatus').textContent='Checking authenticated IEX evidence...';
+ try{
+  const res=await fetch(SOCIAL_MARKET_URL,{method:'GET',cache:'no-store',
+   headers:{Authorization:'Bearer '+session.access_token}});
+  if(!res.ok)throw Error('MARKET_SOURCE_UNAVAILABLE');
+  const data=await res.json(),run=data.scanner||{},rows=Array.isArray(data.by_symbol)?data.by_symbol:[];
+  $('marketChecked').textContent=String(run.symbols_checked??0);
+  $('marketMomentum').textContent=String(rows.filter(x=>x.market_state==='MOMENTUM_OBSERVED').length);
+  $('marketMeasured').textContent=String(rows.filter(x=>x.outcome_state==='MEASURED').length);
+  $('marketConfirmStatus').textContent='Last independent check '+dateUK(run.last_attempt_at)+
+   ' · '+String(run.last_state||'NOT RUN').replaceAll('_',' ')+
+   ' · feed: ALPACA IEX'+(run.last_reason?' · '+String(run.last_reason):'');
+  for(const r of rows.slice(0,12)){
+   const item=document.createElement('div');item.className='panel';
+   item.style.padding='12px';
+   const heading=document.createElement('b');heading.textContent=String(r.symbol||'—')+
+     ' · '+String(r.market_state||'UNVERIFIED').replaceAll('_',' ');
+   item.append(heading);
+   const details=document.createElement('div');details.className='tiny';details.style.marginTop='6px';
+   const pct=v=>v==null||!Number.isFinite(Number(v))?'unverified':Number(v).toFixed(2)+'%';
+   details.textContent='Social sample '+dateUK(r.social_scanned_at)+
+    ' · IEX check '+dateUK(r.assessed_at)+
+    ' · 30m momentum '+pct(r.momentum_30m_pct)+
+    ' · session change '+pct(r.day_change_pct)+
+    ' · spread '+(r.spread_bps==null?'unknown':Number(r.spread_bps).toFixed(1)+' bps')+
+    ' · last trade '+dateUK(r.trade_at)+
+    ' · SEC '+String(r.company_state||'UNVERIFIED').replaceAll('_',' ')+
+    ' · follow-up '+(r.outcome_state==='MEASURED'?
+       pct(r.outcome_30m_pct)+' (raw 30m+ price comparison)':
+       String(r.outcome_state||'NOT_ELIGIBLE').replaceAll('_',' ').toLowerCase());
+   item.append(details);
+   const reasons=Array.isArray(r.source_reasons)?r.source_reasons:[];
+   if(reasons.length){
+    const warning=document.createElement('div');warning.className='tiny warning';
+    warning.style.marginTop='5px';warning.textContent='Data warnings: '+reasons.join('; ').replaceAll('_',' ');
+    item.append(warning);
+   }
+   root.append(item);
+  }
+  if(!rows.length)root.textContent='No comparable, timestamped market records yet. No trade approval.';
+ }catch(_){
+  $('marketChecked').textContent='—';$('marketMomentum').textContent='—';
+  $('marketMeasured').textContent='—';
+  $('marketConfirmStatus').textContent='Independent IEX source unavailable or owner access not verified.';
+  root.textContent='No market confirmation or positive trading conclusion can be inferred.';
+ }
+}
+
+// Clear every private value when logged out or if the owner check fails.
+function clearPrivateAccountUI(){
+ briefReports=[];
+ $('socialState').textContent='OWNER SIGN-IN REQUIRED';
+ $('socialDetail').textContent='Sign in to read private social research.';
+ $('socialCandidates').textContent='No private social records shown.';
+ $('socialCount').textContent='—';$('socialBurst').textContent='—';$('socialNew').textContent='—';
+ $('marketChecked').textContent='—';$('marketMomentum').textContent='—';$('marketMeasured').textContent='—';
+ $('marketConfirmStatus').textContent='Sign in to read independent market checks.';
+ $('marketEvidence').textContent='Private evidence hidden until owner login.';
+ $('briefTitle').textContent='Sign in to see your day';
+ $('briefMeta').textContent='Private paper account report';
+ $('briefContent').textContent='Sign in to read your daily recap.';
+ $('briefDate').replaceChildren();
+ const option=document.createElement('option');option.value='';option.textContent='Latest report';
+ $('briefDate').append(option);
+
+ ciResetDisplay('');
+ for(const id of ['ovCash','ovInvested','ovBuying','ctrlFresh','ctrlScans','ctrlMissing'])$(id).textContent='—';
+ $('ovBalance').textContent='Sign in';
+ $('ovDay').textContent='Private account figures are locked';
+ $('ovSnapshotTime').textContent='Sign in to load verified broker information.';
+ $('ovStatus').textContent='Owner sign-in is required. No brokerage orders can be placed.';
+ $('ovPositionCount').textContent='—';
+ $('ovPositions').textContent='No private portfolio data shown until authorised.';
+ $('ovChart').textContent='Historical portfolio data is locked.';
+ $('ctrlScanners').textContent='Sign in to view protected scanner health.';
+ $('ctrlSignals').textContent='Sign in to view protected research checks.';
+ $('ctrlQuotes').textContent='Sign in to view quote freshness.';
+ $('ctrlMarket').textContent='NOT CHECKED';
+ $('ctrlUpdated').textContent='Source timestamps require login.';
+ $('ctrlVerdict').textContent='Owner login required.';
+ $('paperEquity').textContent='ACCOUNT LOCKED';
+ $('paperMessage').textContent='Sign in to retrieve the Alpaca paper account.';
+ $('positionBlotter').textContent='Account details locked.';
+ $('orderBlotter').textContent='Account details locked.';
+}
+
+// PORTFOLIO OVERVIEW: read-only Alpaca PAPER brokerage account.
+// Do not mix unconnected real-money accounts with the virtual Alpaca paper balance.
+let overviewPeriod='1M',portfolioRequest=0,portfolioBusy=false;
+const ovMoney=v=>v===null||v===undefined||v===''||!Number.isFinite(Number(v))?'—':
+  new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(Number(v));
+const ovTime=t=>{if(!t)return '—';const d=new Date(t);return Number.isFinite(d.getTime())?
+  d.toLocaleString('en-GB',{timeZone:'Europe/London',dateStyle:'medium',timeStyle:'short'})+' UK':'—'};
+function ovChartDraw(points){
+ const target=$('ovChart');target.replaceChildren();
+ const samples=Array.isArray(points)?points.filter(p=>p&&Number.isFinite(Number(p.equity))&&
+  Number(p.equity)>=0&&Number.isFinite(Number(p.timestamp))).sort((a,b)=>a.timestamp-b.timestamp):[];
+ if(samples.length<2){target.textContent='Not enough Alpaca paper-equity history for this period.';return}
+ const vals=samples.map(x=>Number(x.equity)),lo=Math.min(...vals),hi=Math.max(...vals);
+ const x0=12,x1=748,y0=210,y1=12,span=Math.max(1,hi-lo);
+ const xy=vals.map((n,i)=>[x0+(x1-x0)*i/(vals.length-1),y0-(n-lo)/span*(y0-y1)]);
+ const ns='http://www.w3.org/2000/svg';
+ const svg=document.createElementNS(ns,'svg');svg.setAttribute('viewBox','0 0 760 225');
+ svg.setAttribute('role','img');svg.setAttribute('aria-label','Alpaca paper equity chart, '+overviewPeriod);
+ const polygon=document.createElementNS(ns,'polygon');
+ polygon.setAttribute('points',x0+','+y0+' '+xy.map(p=>p.join(',')).join(' ')+
+  ' '+x1+','+y0);polygon.setAttribute('fill','rgba(102,203,147,.12)');svg.append(polygon);
+ const line=document.createElementNS(ns,'polyline');
+ line.setAttribute('points',xy.map(p=>p.join(',')).join(' '));
+ line.setAttribute('fill','none');line.setAttribute('stroke',vals.at(-1)>=vals[0]?'#81e6af':'#ff9b98');
+ line.setAttribute('stroke-width','2.8');line.setAttribute('stroke-linejoin','round');svg.append(line);
+ const dot=document.createElementNS(ns,'circle');dot.setAttribute('cx',xy.at(-1)[0]);
+ dot.setAttribute('cy',xy.at(-1)[1]);dot.setAttribute('r','4');
+ dot.setAttribute('fill','#e1fff1');svg.append(dot);target.append(svg);
+}
+function ovPositionsDraw(rows,verified){
+ const root=$('ovPositions');root.replaceChildren();
+ $('ovPositionCount').textContent=verified?String(rows.length)+' HELD':'UNVERIFIED';
+ if(!verified){root.textContent='Paper holdings could not be retrieved. No holdings assumed.';return}
+ if(!rows.length){root.textContent='No open paper positions yet. The virtual account is currently in cash.';return}
+ for(const p of rows){
+  const item=document.createElement('div');item.className='ov-position';
+  const left=document.createElement('div'),right=document.createElement('div');right.className='right';
+  const sym=document.createElement('strong');sym.textContent=String(p.symbol||'—');
+  const qty=document.createElement('small');qty.textContent=String(p.qty??'—')+' shares · '+String(p.side||'long')+' · paper';
+  left.append(sym,qty);
+  const val=document.createElement('div');val.textContent=ovMoney(p.market_value);
+  const gain=document.createElement('small');gain.textContent='Open P&L '+ovMoney(p.unrealized_pl);
+  gain.className=Number(p.unrealized_pl)<0?'ov-bad':'ov-good';
+  right.append(val,gain);item.append(left,right);root.append(item);
+ }
+}
+async function refreshPortfolio(){
+ if(!ownerApproved){
+  $('ovStatus').textContent='Owner sign-in is required for private paper account details.';return;
+ }
+ if(portfolioBusy)return;
+ const {data:{session}}=await client.auth.getSession();if(!session)return;
+ portfolioBusy=true;const id=++portfolioRequest,periodAtStart=overviewPeriod;$('ovRefresh').disabled=true;
+ $('ovStatus').textContent='Reading Alpaca paper account, open positions and equity history…';
+ try{
+  const payload=await alpacaGet('portfolio',session,'&period='+encodeURIComponent(overviewPeriod));
+  if(id!==portfolioRequest)return;
+  const a=payload.account||{};
+  $('ovBalance').textContent=ovMoney(a.equity);
+  const day=payload.day_change_estimate_usd;
+  $('ovDay').className='ov-change '+(day===null?'ov-muted':Number(day)<0?'ov-bad':'ov-good');
+  const pct=payload.day_change_estimate_pct;
+  $('ovDay').textContent=day===null?'Daily movement unavailable':
+    (Number(day)>=0?'+':'')+ovMoney(day)+' ('+
+    (pct===null||pct===undefined||!Number.isFinite(Number(pct))?'—':
+      (Number(pct)>=0?'+':'')+Number(pct).toFixed(2)+'%')+') versus previous close*';
+  $('ovSnapshotTime').textContent='ALPACA PAPER · VERIFIED '+ovTime(payload.fetched_at)+' · USD';
+  $('ovCash').textContent=ovMoney(a.cash);$('ovBuying').textContent=ovMoney(a.buying_power);
+  $('ovInvested').textContent=payload.positions_verified?ovMoney(payload.invested_market_value):'Unverified';
+  ovPositionsDraw(Array.isArray(payload.positions)?payload.positions:[],payload.positions_verified===true);
+  ovChartDraw(payload.history?.points);
+  $('ovStatus').textContent='Read-only virtual portfolio. *Daily movement is account equity minus prior-close equity and can be affected by balance adjustments. No orders are enabled.';
+ }catch(_){
+  if(id!==portfolioRequest)return;
+  $('ovBalance').textContent='Unavailable';$('ovDay').textContent='Could not verify the paper portfolio';
+  $('ovSnapshotTime').textContent='ALPACA PAPER DATA UNAVAILABLE';
+  $('ovCash').textContent='—';$('ovInvested').textContent='—';$('ovBuying').textContent='—';
+  ovPositionsDraw([],false);ovChartDraw([]);
+  $('ovStatus').textContent='Broker account request failed. This dashboard never invents portfolio balances.';
+ }finally{if(id===portfolioRequest){portfolioBusy=false;$('ovRefresh').disabled=false;if(periodAtStart!==overviewPeriod)refreshPortfolio().catch(()=>{});}}
+}
+$('ovRefresh').addEventListener('click',()=>refreshPortfolio().catch(()=>{}));
+for(const button of $('ovRanges').querySelectorAll('button')){
+ button.addEventListener('click',()=>{
+  if(!['1D','1W','1M','3M','1A'].includes(button.dataset.period))return;
+  overviewPeriod=button.dataset.period;
+  for(const b of $('ovRanges').querySelectorAll('button'))b.classList.toggle('active',b===button);
+  if(ownerApproved)refreshPortfolio().catch(()=>{});
+ });
+}
+$('ovOpenPaper').addEventListener('click',()=>{
+ const button=$('nav').querySelector('[data-tab="paper"]');if(button)button.click();
+});
+setInterval(()=>{
+ if(ownerApproved&&!document.hidden&&!$('view-overview').classList.contains('hidden'))
+  refreshPortfolio().catch(()=>{});
+},60000);
+
+// DATA CONTROL CENTRE: independent read-only broker and authenticated cloud status.
+let controlBusy=false;
+function ctrlItem(title,subtitle,status,bad=false){
+ const tile=document.createElement('article');tile.className='health-tile';
+ const h=document.createElement('b');h.textContent=title;
+ const s=document.createElement('p');s.textContent=subtitle;
+ const code=document.createElement('div');code.className='health-code '+(bad?'ov-bad':'ov-good');
+ code.textContent=status;tile.append(h,code,s);return tile;
+}
+async function refreshDataControl(){
+ if(!ownerApproved){$('ctrlVerdict').textContent='Owner sign-in required.';return}
+ if(controlBusy)return;
+ const {data:{session}}=await client.auth.getSession();if(!session)return;
+ controlBusy=true;$('ctrlRefresh').disabled=true;$('ctrlMarket').textContent='CHECKING…';
+ try{
+  const data=await alpacaGet('control',session);
+  const market=data.market||{};
+  $('ctrlMarket').textContent=!market.clock_verified?'BROKER CLOCK UNAVAILABLE':market.is_open?'US MARKET OPEN':'US MARKET CLOSED';
+  $('ctrlUpdated').textContent='Verified '+ovTime(data.fetched_at)+' · Next open '+ovTime(market.next_open);
+  $('ctrlFresh').textContent=String(data.summary?.recent_iex_quotes??'—')+'/'+String(data.summary?.sources_checked??5);
+  $('ctrlScans').textContent=String(data.summary?.saved_signals??'—');
+  $('ctrlMissing').textContent=String(data.summary?.missing_database_sources??'—');
+  const scans=$('ctrlScanners');scans.replaceChildren();
+  for(const item of data.scanners||[]){
+   const status=String(item.status||'UNKNOWN');
+   const description='Last check '+ovTime(item.last_run_at)+' · '+String(item.last_state||'NOT OBSERVED')+
+     (item.last_reason?' · '+String(item.last_reason).replaceAll('_',' ').toLowerCase():'');
+   scans.append(ctrlItem(String(item.name||'Scanner'),description,status,status==='WARNING'||status==='STALE'));
+  }
+  if(!(data.scanners||[]).length)scans.textContent='No scanner heartbeat verified.';
+  const bars=$('ctrlSignals');bars.replaceChildren();
+  for(const item of data.signal_checks||[]){
+   const recorded=ovTime(item.bar_time),checked=ovTime(item.checked_at);
+   const warning=!['BUY','HOLD'].includes(item.status);
+   bars.append(ctrlItem(String(item.symbol||'?'),
+      'Completed candle '+recorded+' · Last checked '+checked,
+      String(item.status||'UNKNOWN').replaceAll('_',' '),warning));
+  }
+  if(!(data.signal_checks||[]).length)bars.textContent='No completed signal records yet; no signal quality assumed.';
+  const quotes=$('ctrlQuotes');quotes.replaceChildren();
+  for(const q of data.quotes||[]){
+    const desc='Last trade '+ovTime(q.latest_trade_at)+' · Quote '+ovTime(q.latest_quote_at)+
+      ' · age '+(q.age_seconds==null?'unknown':Math.round(q.age_seconds/60)+' min')+' · IEX only';
+    const state=String(q.state||'UNKNOWN');
+    quotes.append(ctrlItem(String(q.symbol),desc,state,
+      ['STALE','MISSING','UNAVAILABLE','LAGGING'].includes(state)));
+  }
+  if(!(data.quotes||[]).length)quotes.textContent='No verified quote records.';
+  const unhealthy=!(market.clock_verified)||(data.scanners||[]).some(s=>s.status!=='ACTIVE')||
+    Number(data.summary?.missing_database_sources||0)>0||
+    (data.quotes||[]).some(q=>['UNAVAILABLE','MISSING'].includes(q.state))||
+    (market.is_open&&(data.quotes||[]).some(q=>q.state!=='RECENT'));
+  $('ctrlVerdict').textContent=unhealthy?
+    'SOME CHECKS REQUIRE ATTENTION. Check scanner status, feed age and missing data. No trades are authorised.':
+    'RESEARCH INFRASTRUCTURE RESPONDING. Market closed and closed-session quote ages are normal. No trade execution is authorised.';
+ }catch(_){
+  $('ctrlMarket').textContent='CHECK FAILED';
+  $('ctrlVerdict').textContent='The private control service did not respond. Do not assume any feed is healthy.';
+  $('ctrlUpdated').textContent='No verified status received';
+  $('ctrlFresh').textContent='—';$('ctrlScans').textContent='—';$('ctrlMissing').textContent='—';
+ }finally{controlBusy=false;$('ctrlRefresh').disabled=false}
+}
+$('ctrlRefresh').addEventListener('click',()=>refreshDataControl().catch(()=>{}));
+setInterval(()=>{
+ if(ownerApproved&&!document.hidden&&!$('view-control').classList.contains('hidden'))
+  refreshDataControl().catch(()=>{});
+},60000);
+
+
+// Owner-only SEC disclosures / US GAAP and curated Fed event windows.
+// Explicitly NEVER clearance for automated execution.
+const ciDate=t=>{if(!t)return '—';const d=new Date(t);
+ return Number.isFinite(d.getTime())?d.toLocaleString('en-GB',{timeZone:'Europe/London',
+  year:'numeric',month:'short',day:'2-digit',hour:'2-digit',minute:'2-digit'})+' UK':'—'};
+function ciResetDisplay(symbol){
+ ciRequest++;
+ $('ciCompany').textContent=symbol?'Awaiting verified company information for '+symbol:'Owner access required';
+ $('ciSecStatus').textContent='NOT CHECKED';$('ciTime').textContent='—';
+ $('ciRisk').textContent='NOT VERIFIED';$('ciMacroStatus').textContent='NOT CHECKED';
+ $('ciAlert').textContent='Company disclosures and event risk have not been verified for this ticker. No trade clearance.';
+ $('ciMacroEvents').replaceChildren();
+ $('ciFilings').textContent='No verified SEC filing history loaded.';
+ $('ciFinancials').textContent='No verified XBRL financial results loaded.';
+ $('ciRiskCodes').textContent='Earnings and breaking-news information are not verified.';
+}
+function ciNote(root,text){
+ const el=document.createElement('div');el.className='tiny';el.textContent=text;
+ root.append(el);return el;
+}
+function ciSecAnchor(label,url){
+ const a=document.createElement('a');a.textContent=label;
+ // Never trust a link derived from EDGAR's primary document field without a domain check.
+ if(typeof url==='string'&&url.startsWith('https://www.sec.gov/')){
+   a.href=url;a.rel='noopener noreferrer';a.target='_blank';
+ }else a.removeAttribute('href');
+ return a;
+}
+async function loadCompanyIntel(){
+ const symbol=selected,id=++ciRequest;
+ if(!ownerApproved){$('ciAlert').textContent='Sign in to check official company data.';return}
+ const {data:{session}}=await client.auth.getSession();if(!session||!ownerApproved)return;
+ $('ciRefresh').disabled=true;
+ $('ciCompany').textContent='Checking SEC and event sources for '+symbol+'…';
+ $('ciSecStatus').textContent='CHECKING';
+ $('ciRisk').textContent='UNVERIFIED';
+ try{
+  const data=await alpacaGet('company',session,'&symbol='+encodeURIComponent(symbol));
+  if(id!==ciRequest||symbol!==selected||!ownerApproved)return;
+  $('ciCompany').textContent=data.company||symbol;
+  $('ciSecStatus').textContent=String(data.sec_status||'UNAVAILABLE').replaceAll('_',' ');
+  $('ciTime').textContent=ciDate(data.fetched_at);
+  $('ciRisk').textContent=data.risk_status==='BLOCK'?'BLOCK / NO TRADE':'UNVERIFIED / NO TRADE';
+  const macro=data.macro||{};
+  $('ciMacroStatus').textContent=String(macro.status||'NOT VERIFIED').replaceAll('_',' ');
+  const events=$('ciMacroEvents');events.replaceChildren();
+  const relevant=(macro.events||[]).filter(e=>e.risk==='BLOCK_WINDOW'||e.risk==='UPCOMING_24H').slice(0,4);
+  for(const event of relevant){
+   const item=document.createElement('div');item.className='health-tile';
+   const h=document.createElement('b');h.textContent=String(event.name||'US monetary-policy event');
+   const time=ciNote(item,ciDate(event.at));
+   const source=ciSecAnchor('Federal Reserve calendar ↗',event.url);
+   source.style.display='inline-block';source.style.marginTop='5px';
+   item.prepend(h);item.append(source);events.append(item);
+  }
+  if(!relevant.length)ciNote(events,'No nearby event in the limited curated Federal Reserve calendar. Other important economic releases can still occur.');
+  const failures=Array.isArray(data.risk_codes)?data.risk_codes:[];
+  $('ciRiskCodes').textContent=failures.length?'Outstanding risks: '+failures.map(x=>String(x).replaceAll('_',' ').toLowerCase()).join(' · '):
+   'Risk assessment incomplete. No automatic trade clearance.';
+  const status=String(data.sec_status||'UNAVAILABLE');
+  $('ciAlert').textContent=status==='SEC_CONTACT_NOT_CONFIGURED'?
+   'SEC access needs one server-side contact setting: SEC_USER_AGENT. No API key or paid account is required. Ask the owner to configure it in Supabase Edge Function secrets.':
+   status==='CONNECTED'?
+   'Official filings retrieved. SEC form types alone cannot reveal whether news is good or bad. Earnings dates, real-time news and validated strategy remain unverified — NO TRADE.':
+   'SEC information could not be verified ('+status.replaceAll('_',' ')+'). Do not infer financial figures or trading approval.';
+  const filings=$('ciFilings');filings.replaceChildren();
+  for(const item of (data.filings||[]).slice(0,12)){
+   const row=document.createElement('div');row.className='ov-position';
+   const name=document.createElement('div');
+   const title=document.createElement('strong');title.textContent=String(item.form||'?');
+   const extra=document.createElement('small');extra.textContent='Filed '+String(item.filed||'date unknown')+
+    (item.disclosure_review_required?' · REVIEW DOCUMENT':'');
+   name.append(title,extra);
+   row.append(name,ciSecAnchor('Read filing ↗',item.document_url));filings.append(row);
+  }
+  if(!(data.filings||[]).length)ciNote(filings,'No verified SEC filing history returned for this symbol.');
+  const facts=$('ciFinancials');facts.replaceChildren();
+  for(const item of (data.financials||[])){
+   const row=document.createElement('div');row.className='ov-position';
+   const left=document.createElement('div');
+   const title=document.createElement('strong');title.textContent=item.metric;
+   const when=document.createElement('small');when.textContent=String(item.form||'')+
+    ' · filed '+String(item.filed||'unknown')+' · period '+String(item.start?item.start+' to ':'')+String(item.period_end||'unknown');
+   left.append(title,when);
+   const val=document.createElement('span');val.className='health-code';
+   val.textContent=Number.isFinite(Number(item.value))?
+    new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',notation:'compact',maximumFractionDigits:2}).format(Number(item.value)):'—';
+   row.append(left,val);facts.append(row);
+  }
+  if(!(data.financials||[]).length)ciNote(facts,'No standardised facts retrieved. No figures are inferred.');
+ }catch(_){
+  if(id!==ciRequest)return;
+  $('ciSecStatus').textContent='SERVICE UNAVAILABLE';
+  $('ciAlert').textContent='Private company intelligence did not respond. Treat all company and event checks as unverified; NO TRADE.';
+  $('ciRisk').textContent='UNVERIFIED / NO TRADE';
+ }finally{if(id===ciRequest)$('ciRefresh').disabled=false}
+}
+$('ciRefresh').addEventListener('click',()=>loadCompanyIntel().catch(()=>{}));
+
+
+// DAILY SUMMARY: true saved research and broker-paper facts, no AI guessing.
+function briefDateLabel(day){
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(day||''))return 'Previous session';
+ const d=new Date(day+'T12:00:00Z');
+ return new Intl.DateTimeFormat('en-GB',{weekday:'short',day:'numeric',month:'short',
+  year:'numeric',timeZone:'America/New_York'}).format(d);
+}
+function briefRender(report){
+ const container=$('briefContent');container.replaceChildren();
+ if(!report){
+  $('briefTitle').textContent='After today’s market closes';
+  $('briefMeta').textContent='Reports appear here automatically after each eligible US market session.';
+  const p=document.createElement('p');
+  p.textContent='The scheduled report hasn’t been produced yet. IIHQ will summarise the shares it checked, the companies it investigated and the real paper-order history after the US market closes. You do not need to leave the app open.';
+  container.append(p);return;
+ }
+ $('briefTitle').textContent=String(report.report_title||'Daily recap');
+ $('briefMeta').textContent='Market day '+briefDateLabel(report.market_date)+
+  ' · prepared '+ovTime(report.generated_at)+
+  (report.status==='PARTIAL'?' · some information could not be verified':'');
+ const raw=String(report.report_text||'No written report available.');
+ for(const paragraph of raw.split(/\n\s*\n/).slice(0,12)){
+  if(!paragraph.trim())continue;
+  const p=document.createElement('p');p.textContent=paragraph;
+  container.append(p);
+ }
+ if(Array.isArray(report.warnings)&&report.warnings.length){
+  const caution=document.createElement('p');caution.className='ov-bad';
+  caution.textContent='A few checks could not be completed, so parts of this recap may be missing.';
+  container.append(caution);
+ }
+}
+async function refreshDailyBrief(){
+ if(!ownerApproved){briefRender(null);return}
+ if(briefBusy)return;
+ const {data:{session}}=await client.auth.getSession();if(!session)return;
+ briefBusy=true;$('briefRefresh').disabled=true;
+ try{
+  const data=await alpacaGet('dailybrief',session);
+  if(!ownerApproved)return;
+  briefReports=Array.isArray(data.reports)?data.reports:[];
+  const select=$('briefDate'),previous=select.value;
+  select.replaceChildren();
+  if(!briefReports.length){
+   const option=document.createElement('option');option.value='';option.textContent='No reports yet';
+   select.append(option);briefRender(null);
+  }else{
+   for(const report of briefReports){
+    const option=document.createElement('option');option.value=report.market_date;
+    option.textContent=briefDateLabel(report.market_date);
+    select.append(option);
+   }
+   const chosen=briefReports.find(x=>x.market_date===previous)||briefReports[0];
+   select.value=chosen.market_date;briefRender(chosen);
+  }
+ }catch(_){
+  $('briefTitle').textContent='Report not available';
+  $('briefMeta').textContent='The private daily report could not be loaded.';
+  $('briefContent').textContent='Try refreshing later. No report details are being guessed.';
+ }finally{briefBusy=false;$('briefRefresh').disabled=false}
+}
+$('briefRefresh').addEventListener('click',()=>refreshDailyBrief().catch(()=>{}));
+$('briefDate').addEventListener('change',()=>{
+ const report=briefReports.find(x=>x.market_date===$('briefDate').value);
+ briefRender(report||null);
+});
++Number(market.price_usd).toFixed(2))+
+   ' · 30m momentum '+(market.momentum_30m_pct==null?'unverified':Number(market.momentum_30m_pct).toFixed(2)+'%')+
+   ' · IEX spread '+(market.spread_bps==null?'unverified':Number(market.spread_bps).toFixed(1)+' bps')+
+   ' · SEC '+String(market.company_state||'UNVERIFIED').replaceAll('_',' ')+
+   ' · later price '+(market.outcome_state==='MEASURED'&&market.outcome_30m_pct!=null?
+     Number(market.outcome_30m_pct).toFixed(2)+'% (raw IEX comparison)':
+     String(market.outcome_state||'NOT_ELIGIBLE').replaceAll('_',' ').toLowerCase())+
+   (reasons.length?' · warnings: '+reasons.slice(0,3).join(', ').replaceAll('_',' '):'')+
+   ' · NO TRADE';
+ }
+ shell.append(m);
  const actions=document.createElement('div');actions.className='actions';actions.style.marginTop='11px';
  const research=document.createElement('button');research.type='button';research.className='secondary';
  research.textContent='ADD / OPEN RESEARCH WATCHLIST';
@@ -1086,6 +1631,8 @@ function clearPrivateAccountUI(){
  $('socialDetail').textContent='Sign in to read private social research.';
  $('socialCandidates').textContent='No private social records shown.';
  $('socialCount').textContent='—';$('socialBurst').textContent='—';$('socialNew').textContent='—';
+ $('marketChecked').textContent='—';$('marketMomentum').textContent='—';$('marketMeasured').textContent='—';
+ $('marketConfirmStatus').textContent='Owner access required';$('marketEvidence').textContent='Private market evidence locked';
  $('briefTitle').textContent='Sign in to see your day';
  $('briefMeta').textContent='Private paper account report';
  $('briefContent').textContent='Sign in to read your daily recap.';
