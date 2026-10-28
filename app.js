@@ -599,35 +599,47 @@ setInterval(()=>{if(ownerApproved&&!document.hidden&&!$('view-ops').classList.co
 let fredLoaded=false;
 let fredLoading=false;
 let fredRequest=0;
+const FRED_EXPLAINS={
+ DGS2:'The annual yield on a US government bond maturing in two years. Useful context for interest-rate expectations.',
+ DGS10:'The annual yield on a US government bond maturing in ten years. Influences financing costs and share valuations.',
+ T10Y2Y:'The difference between ten-year and two-year Treasury yields. It describes the shape of the yield curve, not a buy/sell signal.',
+ FEDFUNDS:'The monthly average overnight interest rate actually traded between US banks. This is NOT today’s newly announced Fed target.',
+ UNRATE:'The percentage of people in the US labour force who are unemployed and looking for work. Released monthly.',
+ CPIAUCSL:'The change in consumer prices over the previous 12 months. This is an inflation rate, not a share-price return.'
+};
 function createFredCard(item){
- const card=document.createElement('div');card.className='mini';
- card.style.minHeight='174px';
- const title=document.createElement('span');title.className='eyebrow';title.textContent=item.label||item.id;
- const main=document.createElement('b');main.style.fontSize='21px';
- main.style.marginTop='12px';
- const date=document.createElement('p');date.className='mono';date.style.fontSize='10px';
- const details=document.createElement('p');details.className='mono';details.style.marginTop='7px';
- const link=document.createElement('a');
- link.textContent='FRED '+String(item.id||'')+' ↗';
- link.href='https://fred.stlouisfed.org/series/'+encodeURIComponent(item.id||'');
- link.target='_blank';link.rel='noopener noreferrer';link.style.fontSize='11px';
- link.style.display='inline-block';link.style.marginTop='12px';
+ const card=document.createElement('article');card.className='fred-card';
+ const label=document.createElement('div');label.className='fred-label';
+ label.textContent=item.label||item.id||'Economic indicator';
+ const explain=document.createElement('div');explain.className='fred-explain';
+ explain.textContent=FRED_EXPLAINS[item.id]||'Historical economic context; not a live market price or trading instruction.';
+ const value=document.createElement('div');value.className='fred-value';
+ const date=document.createElement('div');date.className='fred-date';
+ const prev=document.createElement('div');prev.className='fred-prev';
+ const link=document.createElement('a');link.className='fred-source';
+ link.textContent='View official FRED series ↗';
+ const known=['DGS2','DGS10','T10Y2Y','FEDFUNDS','UNRATE','CPIAUCSL'];
+ const safeId=known.includes(item.id)?item.id:'';
+ link.href=safeId?'https://fred.stlouisfed.org/series/'+safeId:'https://fred.stlouisfed.org/';
+ link.target='_blank';link.rel='noopener noreferrer';
  if(item.status==='OK'&&item.latest){
-   const value=Number(item.latest.value);
-   main.textContent=Number.isFinite(value)?value.toFixed(2)+(item.units==='%'?'%':' pp'):'—';
-   date.textContent='OBSERVED '+item.latest.observation_date+' · '+item.frequency;
-   if(item.previous&&Number.isFinite(Number(item.previous.value))){
-     const delta=value-Number(item.previous.value);
-     details.textContent='Previous observation '+Number(item.previous.value).toFixed(2)+
-       ' · change '+(delta>=0?'+':'')+delta.toFixed(2)+' points';
-   }else details.textContent='Previous observation unavailable';
+   const number=Number(item.latest.value);
+   value.textContent=Number.isFinite(number)?
+     new Intl.NumberFormat('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2}).format(number)+(item.units==='%'?'%':' pp'):'—';
+   date.textContent='Observed '+item.latest.observation_date+' · '+(item.frequency||'Publication schedule varies');
+   if(item.previous&&Number.isFinite(Number(item.previous.value))&&Number.isFinite(number)){
+     const previous=Number(item.previous.value),change=number-previous;
+     prev.textContent='Prior observation '+previous.toFixed(2)+(item.units==='%'?'%':' pp')+
+       ' · difference '+(change>0?'+':'')+change.toFixed(2)+' percentage points';
+   }else prev.textContent='Prior observation not available';
  }else{
-   main.textContent='UNAVAILABLE';
-   date.textContent='No verified observation';
-   details.textContent=item.error==='FRED_CREDENTIALS_OR_REQUEST_REJECTED'?
-     'FRED rejected the key or request':'FRED data temporarily unavailable';
+   value.textContent='Unavailable';
+   date.textContent='No verified observation retrieved';
+   prev.textContent=item.error==='FRED_CREDENTIALS_OR_REQUEST_REJECTED'?
+     'The FRED key or request was rejected':'The FRED source did not return usable data';
  }
- card.append(title,main,date,details,link);return card;
+ card.append(label,value,explain,date,prev,link);
+ return card;
 }
 async function loadFredOverview(){
  if(fredLoading)return;
