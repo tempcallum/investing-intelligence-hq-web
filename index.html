@@ -388,13 +388,14 @@ body{background:var(--bg)}.shell{max-width:1330px;padding-top:18px}
 <div class="line"><span>Saved signal rows</span><b id="opsStored">—</b></div>
 <div class="line"><span>Automated trading</span><b class="green" id="opsOrders">OFF</b></div>
 <div id="opsMessage" class="locked">Sign in to verify the live private system. Never treat this readiness panel as authorisation to trade.</div></div></section>
-<section class="panel"><div class="phead"><b>US SESSION · UK TIME · 28 OCT</b><span>RESEARCH ONLY</span></div><div class="pbody stack">
-<div class="line"><span>13:30</span><b>US MARKET OPENS</b></div>
-<div class="line"><span>13:36</span><b>FIRST SCHEDULED RESEARCH CHECK</b></div>
-<div class="line"><span>~15:21</span><b>EARLIEST FULL 9/21 SMA*</b></div>
-<div class="line"><span>20:00</span><b>REGULAR MARKET CLOSE</b></div>
-<div class="info">*Needs 22 consecutive five-minute IEX candles. Missing IEX bars will delay or block an assessment. Outside market hours the scanner should skip. Today is not a promise of profitable signals.</div>
-<div class="locked">No Alpaca order-submission API is enabled; no real money is connected.</div></div></section>
+<section class="panel"><div class="phead"><b>US MARKET SESSION · CLOCK AND SCANNER</b><span>RESEARCH ONLY</span></div><div class="pbody stack">
+<div class="line"><span>09:30 New York time</span><b>US REGULAR SESSION OPENS</b></div>
+<div class="line"><span>16:00 New York time</span><b>US REGULAR SESSION CLOSES</b></div>
+<div class="line"><span>Opportunity Radar</span><b>EVERY 15 MIN · BROKER CLOCK REQUIRED</b></div>
+<div class="line"><span>Price / momentum data</span><b>ALPACA IEX · PARTIAL US COVERAGE</b></div>
+<div class="info">NYSE regular hours are shown in Eastern Time; UK times change with daylight-saving transitions. The actual Alpaca market clock is authoritative for holidays. Missing five-minute bars or unverified events must never silently pass as verified trades.</div>
+<div class="locked">No paper or live Alpaca order submission is enabled. Research observations do not guarantee profits.</div>
+</div></section>
 </div></section>
 <section id="view-risk" class="view hidden"><section class="panel" style="margin-bottom:12px">
 <div class="phead"><b>PRE-TRADE INTELLIGENCE / PAPER</b><span>READ-ONLY</span></div>
