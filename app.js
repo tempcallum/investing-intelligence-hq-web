@@ -325,7 +325,8 @@ function drawBars(bars,symbol,timeframe=chartTimeframe,verifiedAt){
   for(const b of Array.isArray(bars)?bars:[]){
     const stamp=Date.parse(b?.t||''),o=Number(b?.o),h=Number(b?.h),
       l=Number(b?.l),c=Number(b?.c),v=Number(b?.v);
-    if(!Number.isFinite(stamp)||!Number.isFinite(o)||!Number.isFinite(h)||
+    if([b?.o,b?.h,b?.l,b?.c,b?.v].some(x=>x===null||x===undefined||x==='')||
+       !Number.isFinite(stamp)||!Number.isFinite(o)||!Number.isFinite(h)||
        !Number.isFinite(l)||!Number.isFinite(c)||!Number.isFinite(v)||
        o<=0||h<=0||l<=0||c<=0||v<0||
        h<Math.max(o,c,l)||l>Math.min(o,c,h)){
