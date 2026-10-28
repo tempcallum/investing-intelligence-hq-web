@@ -34,6 +34,8 @@ function setSymbol(s){
  if(!watchlist.includes(s))return;selected=s;
  $('chosenSymbol').textContent=s;$('chosenName').textContent=NAMES[s]||'Watchlist instrument — details not connected';
  $('researchSymbol').textContent=s;
+ ciResetDisplay(s);
+ if(ownerApproved&&!$('view-research').classList.contains('hidden'))loadCompanyIntel().catch(()=>{});
  $('strategyTicker').textContent=s;
  $('backtestSymbol').textContent=s;
  $('riskTicker').textContent=s;
@@ -85,6 +87,7 @@ for(const button of $('nav').querySelectorAll('button')){
    $('viewTitle').textContent=TABS[tab];
    if(tab==='strategies'&&ownerApproved)refreshSavedScans().catch(()=>{});
    if(tab==='research'&&!fredLoaded)loadFredOverview().catch(()=>{});
+   if(tab==='research'&&ownerApproved)loadCompanyIntel().catch(()=>{});
    if(tab==='risk'&&ownerApproved)refreshReadiness().catch(()=>{});
    if(tab==='ops')refreshOpeningCheck().catch(()=>{});
    if(tab==='discover')refreshJournal().catch(()=>{});
@@ -841,6 +844,7 @@ setInterval(()=>{if(ownerApproved&&!document.hidden&&!$('view-discover').classLi
 
 // Clear every private value when logged out or if the owner check fails.
 function clearPrivateAccountUI(){
+ ciResetDisplay('');
  for(const id of ['ovCash','ovInvested','ovBuying','ctrlFresh','ctrlScans','ctrlMissing'])$(id).textContent='—';
  $('ovBalance').textContent='Sign in';
  $('ovDay').textContent='Private account figures are locked';
@@ -1026,3 +1030,104 @@ setInterval(()=>{
  if(ownerApproved&&!document.hidden&&!$('view-control').classList.contains('hidden'))
   refreshDataControl().catch(()=>{});
 },60000);
+
+
+// Owner-only SEC disclosures / US GAAP and curated Fed event windows.
+// Explicitly NEVER clearance for automated execution.
+let ciRequest=0;
+const ciDate=t=>{if(!t)return '—';const d=new Date(t);
+ return Number.isFinite(d.getTime())?d.toLocaleString('en-GB',{timeZone:'Europe/London',
+  year:'numeric',month:'short',day:'2-digit',hour:'2-digit',minute:'2-digit'})+' UK':'—'};
+function ciResetDisplay(symbol){
+ ciRequest++;
+ $('ciCompany').textContent=symbol?'Awaiting verified company information for '+symbol:'Owner access required';
+ $('ciSecStatus').textContent='NOT CHECKED';$('ciTime').textContent='—';
+ $('ciRisk').textContent='NOT VERIFIED';$('ciMacroStatus').textContent='NOT CHECKED';
+ $('ciAlert').textContent='Company disclosures and event risk have not been verified for this ticker. No trade clearance.';
+ $('ciMacroEvents').replaceChildren();
+ $('ciFilings').textContent='No verified SEC filing history loaded.';
+ $('ciFinancials').textContent='No verified XBRL financial results loaded.';
+ $('ciRiskCodes').textContent='Earnings and breaking-news information are not verified.';
+}
+function ciNote(root,text){
+ const el=document.createElement('div');el.className='tiny';el.textContent=text;
+ root.append(el);return el;
+}
+function ciSecAnchor(label,url){
+ const a=document.createElement('a');a.textContent=label;
+ // Never trust a link derived from EDGAR's primary document field without a domain check.
+ if(typeof url==='string'&&url.startsWith('https://www.sec.gov/')){
+   a.href=url;a.rel='noopener noreferrer';a.target='_blank';
+ }else a.removeAttribute('href');
+ return a;
+}
+async function loadCompanyIntel(){
+ const symbol=selected,id=++ciRequest;
+ if(!ownerApproved){$('ciAlert').textContent='Sign in to check official company data.';return}
+ const {data:{session}}=await client.auth.getSession();if(!session||!ownerApproved)return;
+ $('ciRefresh').disabled=true;
+ $('ciCompany').textContent='Checking SEC and event sources for '+symbol+'…';
+ $('ciSecStatus').textContent='CHECKING';
+ $('ciRisk').textContent='UNVERIFIED';
+ try{
+  const data=await alpacaGet('company',session,'&symbol='+encodeURIComponent(symbol));
+  if(id!==ciRequest||symbol!==selected||!ownerApproved)return;
+  $('ciCompany').textContent=data.company||symbol;
+  $('ciSecStatus').textContent=String(data.sec_status||'UNAVAILABLE').replaceAll('_',' ');
+  $('ciTime').textContent=ciDate(data.fetched_at);
+  $('ciRisk').textContent=data.risk_status==='BLOCK'?'BLOCK / NO TRADE':'UNVERIFIED / NO TRADE';
+  const macro=data.macro||{};
+  $('ciMacroStatus').textContent=String(macro.status||'NOT VERIFIED').replaceAll('_',' ');
+  const events=$('ciMacroEvents');events.replaceChildren();
+  const relevant=(macro.events||[]).filter(e=>e.risk==='BLOCK_WINDOW'||e.risk==='UPCOMING_24H').slice(0,4);
+  for(const event of relevant){
+   const item=document.createElement('div');item.className='health-tile';
+   const h=document.createElement('b');h.textContent=String(event.name||'US monetary-policy event');
+   const time=ciNote(item,ciDate(event.at));
+   const source=ciSecAnchor('Federal Reserve calendar ↗',event.url);
+   source.style.display='inline-block';source.style.marginTop='5px';
+   item.prepend(h);item.append(source);events.append(item);
+  }
+  if(!relevant.length)ciNote(events,'No nearby event in the limited curated Federal Reserve calendar. Other important economic releases can still occur.');
+  const failures=Array.isArray(data.risk_codes)?data.risk_codes:[];
+  $('ciRiskCodes').textContent=failures.length?'Outstanding risks: '+failures.map(x=>String(x).replaceAll('_',' ').toLowerCase()).join(' · '):
+   'Risk assessment incomplete. No automatic trade clearance.';
+  const status=String(data.sec_status||'UNAVAILABLE');
+  $('ciAlert').textContent=status==='SEC_CONTACT_NOT_CONFIGURED'?
+   'SEC access needs one server-side contact setting: SEC_USER_AGENT. No API key or paid account is required. Ask the owner to configure it in Supabase Edge Function secrets.':
+   status==='CONNECTED'?
+   'Official filings retrieved. SEC form types alone cannot reveal whether news is good or bad. Earnings dates, real-time news and validated strategy remain unverified — NO TRADE.':
+   'SEC information could not be verified ('+status.replaceAll('_',' ')+'). Do not infer financial figures or trading approval.';
+  const filings=$('ciFilings');filings.replaceChildren();
+  for(const item of (data.filings||[]).slice(0,12)){
+   const row=document.createElement('div');row.className='ov-position';
+   const name=document.createElement('div');
+   const title=document.createElement('strong');title.textContent=String(item.form||'?');
+   const extra=document.createElement('small');extra.textContent='Filed '+String(item.filed||'date unknown')+
+    (item.disclosure_review_required?' · REVIEW DOCUMENT':'');
+   name.append(title,extra);
+   row.append(name,ciSecAnchor('Read filing ↗',item.document_url));filings.append(row);
+  }
+  if(!(data.filings||[]).length)ciNote(filings,'No verified SEC filing history returned for this symbol.');
+  const facts=$('ciFinancials');facts.replaceChildren();
+  for(const item of (data.financials||[])){
+   const row=document.createElement('div');row.className='ov-position';
+   const left=document.createElement('div');
+   const title=document.createElement('strong');title.textContent=item.metric;
+   const when=document.createElement('small');when.textContent=String(item.form||'')+
+    ' · filed '+String(item.filed||'unknown')+' · period '+String(item.start?item.start+' to ':'')+String(item.period_end||'unknown');
+   left.append(title,when);
+   const val=document.createElement('span');val.className='health-code';
+   val.textContent=Number.isFinite(Number(item.value))?
+    new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',notation:'compact',maximumFractionDigits:2}).format(Number(item.value)):'—';
+   row.append(left,val);facts.append(row);
+  }
+  if(!(data.financials||[]).length)ciNote(facts,'No standardised facts retrieved. No figures are inferred.');
+ }catch(_){
+  if(id!==ciRequest)return;
+  $('ciSecStatus').textContent='SERVICE UNAVAILABLE';
+  $('ciAlert').textContent='Private company intelligence did not respond. Treat all company and event checks as unverified; NO TRADE.';
+  $('ciRisk').textContent='UNVERIFIED / NO TRADE';
+ }finally{if(id===ciRequest)$('ciRefresh').disabled=false}
+}
+$('ciRefresh').addEventListener('click',()=>loadCompanyIntel().catch(()=>{}));
