@@ -47,6 +47,21 @@
 .install-guide>div{margin-top:10px}
 @media(display-mode:standalone){.install-guide{display:none}}
 @supports(padding-top:env(safe-area-inset-top)){.top{padding-top:env(safe-area-inset-top)}.shell{padding-bottom:calc(36px + env(safe-area-inset-bottom))}}
+
+/* Market terminal v3 — candlestick OHLCV chart, volume panel and overlays */
+.candle-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:15px}
+.candle-timeframes{display:flex;flex-wrap:wrap;gap:5px}
+.candle-timeframes button{background:#142625;border:1px solid #36564c;border-radius:7px;color:#afc8bd;padding:8px 12px;font-size:12px;min-width:39px;font-weight:700}
+.candle-timeframes button.active{background:#21503b;border-color:#66ad84;color:#b5f6cf}
+.candle-chart{height:355px;padding:0;margin-top:11px;overflow:hidden;border-radius:11px;background:#0e191c;display:block}
+.candle-chart svg{display:block;width:100%;height:100%;touch-action:manipulation}
+.candle-meta{color:#bfd2c8;font:12px ui-monospace,monospace;line-height:1.6;min-height:25px;margin-top:8px;overflow-wrap:anywhere}
+.candle-legend{display:flex;flex-wrap:wrap;gap:8px 14px;color:#a5bfb3;font:11px ui-monospace,monospace;margin-top:11px}
+.candle-legend span{display:flex;align-items:center;gap:5px}
+.candle-swatch{width:9px;height:9px;display:inline-block;border-radius:1px}
+.candle-swatch.up{background:#80dfaa}.candle-swatch.down{background:#ef8d87}
+.candle-legend .sma9{color:#efc77d}.candle-legend .sma21{color:#8ab6ed}
+@media(max-width:750px){.candle-chart{height:325px}.candle-timeframes button{padding:9px 10px}.candle-head .ov-eyebrow{font-size:10px}}
 /* Design v2: calm visual hierarchy and mobile navigation */
 :root{--bg:#0a1113;--layer:#101b1d;--layer2:#142124;--stroke:#29423e;--ink:#e9f3ee;--muted:#a3b7b1}
 body{background:var(--bg)}.shell{max-width:1330px;padding-top:18px}
@@ -171,7 +186,20 @@ body{background:var(--bg)}.shell{max-width:1330px;padding-top:18px}
 <section id="view-markets" class="view hidden">
 <div class="grid">
 <section class="panel leftcol"><div class="phead"><b>WATCHLIST / US</b><span id="watchCount">—</span></div><form class="watchTools" id="watchForm"><input id="addSymbol" placeholder="ADD TICKER · e.g. AAPL" aria-label="Add ticker" maxlength="8" autocapitalize="characters"><button class="secondary" aria-label="Add ticker" type="submit">+</button></form><div class="headrow"><span>SYMBOL</span><span>INSTRUMENT</span><span>LAST</span></div><div class="stocks" id="watchStocks"></div><div class="footerNote" id="watchFooter">Watchlist stored on this device · sign in for IEX market prices</div></section>
-<section class="panel midcol"><div class="phead"><b>INSTRUMENT WORKSPACE</b><button id="refreshQuotes" class="secondary" style="padding:5px 9px;font-size:10px" type="button">↻ REFRESH IEX</button></div><div class="instrument"><div class="iname"><div><h2 id="chosenSymbol">AAPL</h2><p class="company" id="chosenName">Apple Inc.</p></div><span class="statusTag" id="instrumentFeedTag">IEX / LOCKED</span></div><div class="pricebig mono">— <span style="font-size:12px;color:var(--muted)">USD</span></div><div class="tiny" id="quoteSource">To view Alpaca IEX prices, sign in to your private paper-data connection. Quotes may not represent the whole US market.</div><div class="tiny mono" id="feedRefreshAt" style="margin-top:6px">AUTO UPDATE: 20 SECONDS WHILE MARKETS TAB IS VISIBLE · NOT TICK STREAMING</div><div class="chart" id="priceChart"><div><strong>NO VERIFIED PRICE DATA</strong><small>Chart, intraday candles and volume will populate from the future authorised market feed. No prices are simulated.</small></div></div><div class="axes"><span>LAST AVAILABLE</span><span>US SESSION · 5 MIN</span><span>CLOSE</span></div><div class="metricrow"><div class="metric"><div class="k">DAY CHANGE</div><div class="v">—</div></div><div class="metric"><div class="k">DAY VOLUME</div><div class="v">—</div></div><div class="metric"><div class="k">VWAP</div><div class="v">—</div></div></div></div></section>
+<section class="panel midcol"><div class="phead"><b>INSTRUMENT WORKSPACE</b><button id="refreshQuotes" class="secondary" style="padding:5px 9px;font-size:10px" type="button">↻ REFRESH IEX</button></div><div class="instrument"><div class="iname"><div><h2 id="chosenSymbol">AAPL</h2><p class="company" id="chosenName">Apple Inc.</p></div><span class="statusTag" id="instrumentFeedTag">IEX / LOCKED</span></div><div class="pricebig mono">— <span style="font-size:12px;color:var(--muted)">USD</span></div><div class="tiny" id="quoteSource">To view Alpaca IEX prices, sign in to your private paper-data connection. Quotes may not represent the whole US market.</div><div class="tiny mono" id="feedRefreshAt" style="margin-top:6px">AUTO UPDATE: 20 SECONDS WHILE MARKETS TAB IS VISIBLE · NOT TICK STREAMING</div><div class="candle-head">
+ <div class="ov-eyebrow">OHLC CANDLES · VOLUME · SMA 9/21</div>
+ <div class="candle-timeframes" id="candleTimeframes" aria-label="Select candle timeframe">
+   <button type="button" data-tf="1Min">1m</button>
+   <button type="button" data-tf="5Min" class="active" aria-pressed="true">5m</button>
+   <button type="button" data-tf="15Min">15m</button>
+   <button type="button" data-tf="1Hour">1h</button>
+   <button type="button" data-tf="1Day">1D</button>
+ </div>
+</div>
+<div class="chart candle-chart" id="priceChart" role="img" aria-label="Verified IEX candlestick chart"><div><strong>NO VERIFIED PRICE DATA</strong><small>The five-minute IEX OHLCV candlesticks will appear after loading. No prices are simulated.</small></div></div>
+<div class="candle-meta" id="candleInfo">IEX is a single US exchange. Waiting for completed bars.</div>
+<div class="candle-legend"><span><i class="candle-swatch up"></i> Up candle</span><span><i class="candle-swatch down"></i> Down candle</span><span class="sma9">SMA 9</span><span class="sma21">SMA 21</span><span>Volume below</span></div>
+<div class="axes"><span id="candleAxisStart">FIRST VERIFIED BAR</span><span id="candleAxisTF">IEX · 5 MIN</span><span id="candleAxisEnd">LAST COMPLETED BAR</span></div><div class="metricrow"><div class="metric"><div class="k">DAY CHANGE</div><div class="v">—</div></div><div class="metric"><div class="k">DAY VOLUME</div><div class="v">—</div></div><div class="metric"><div class="k">VWAP</div><div class="v">—</div></div></div></div></section>
 <div class="rightcol"><section class="panel"><div class="phead"><b>TRADING SYSTEM</b><small>STATUS</small></div><div class="shelf"><div class="signal">SYSTEM MODE</div><div class="bigstat green">SIMULATION</div><div class="tiny">Paper order execution is OFF. No live-money trading route is connected.</div></div><div class="line"><span>Alpaca paper</span><b class="green">SEE HOME</b></div><div class="line"><span>Order engine</span><b class="green">LOCKED</b></div><div class="line"><span>Market data</span><b class="warning">IEX ONLY</b></div></section>
 <section class="panel"><div class="phead"><b>RISK SENTINEL</b><small>PRE-TRADE</small></div><div class="pbody stack"><div class="info">Independent risk limits and a kill switch will govern simulated orders when the execution engine is tested.</div><div class="line" style="padding:8px 0"><span>Exposure</span><b>—</b></div><div class="line" style="padding:8px 0"><span>Daily P&amp;L</span><b>—</b></div><div class="line" style="padding:8px 0"><span>Last inspection</span><b>—</b></div></div></section></div>
 </div></section>
@@ -430,5 +458,5 @@ body{background:var(--bg)}.shell{max-width:1330px;padding-top:18px}
 <footer class="bottom">IIHQ · INDEPENDENT RESEARCH WORKSTATION · PAPER MODE<br>MARKET DATA: ALPACA IEX · PARTIAL US EXCHANGE COVERAGE · VIRTUAL BALANCES IN USD</footer>
 </main>
 <div class="overlay hidden" id="authOverlay" role="dialog" aria-modal="true" aria-labelledby="authTitle"><div class="dialog"><div style="display:flex;align-items:center;justify-content:space-between"><h2 id="authTitle">Authorised account access</h2><button class="close" id="authClose" aria-label="Close login">×</button></div><p>Sign in only when you need private portfolio details. Public market research requires no account.</p><div id="loginForm"><label for="email">EMAIL</label><input id="email" type="email" autocomplete="email" placeholder="your@email.com"><label for="password">PASSWORD</label><input id="password" type="password" autocomplete="current-password" placeholder="Supabase Auth password"><div class="authbuttons"><button class="btn" id="passwordLogin">SIGN IN</button><button class="btn" id="magicLogin">EMAIL SIGN-IN LINK</button></div></div><div id="signedIn" class="hidden"><div class="info">Authenticated as <b id="userEmail"></b></div><div class="authbuttons"><button class="btn" id="refresh">REFRESH PRIVATE DESK</button><button class="btn" id="signout">SIGN OUT</button></div></div><p id="authMessage" class="msg">Your Supabase administration login is separate from this dashboard user. Create an Auth user in the Investing HQ project first.</p></div></div>
-<script type="module" src="./app.js?v=20261028-company-enrichment-v1"></script>
+<script type="module" src="./app.js?v=20261028-candles-v3"></script>
 </body></html>
