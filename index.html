@@ -152,7 +152,7 @@ body{background:var(--bg)}.shell{max-width:1330px;padding-top:18px}
 <header class="top"><div class="topinner"><div class="brand"><div class="logo"><img src="./icons/iihq-icon-192.png?v=1" width="40" height="40" alt=""></div><div><div class="bt">INVESTING INTELLIGENCE HQ</div><div class="sub">MARKETS &nbsp;·&nbsp; RESEARCH &nbsp;·&nbsp; PAPER</div></div></div><div class="topright"><span class="badge" id="feedBadge"><span class="dot"></span>FEED LOCKED</span><button class="acc" id="accountOpen">ACCOUNT / LOCKED</button></div></div></header>
 <div class="tickerbar"><div class="tickerinner" id="tickerbar" aria-label="Market watchlist"><span class="ticker">MARKET DATA NOT CONNECTED — NO LIVE PRICES</span></div></div>
 <main class="shell">
-<nav class="nav" id="nav" aria-label="Main navigation"><button class="active" data-tab="overview" type="button">Home</button><button data-tab="markets" type="button">Markets</button><button data-tab="discover" type="button">Discover</button><button data-tab="research" type="button">Research</button><details id="moreNav" class="nav-more"><summary>More</summary><div class="nav-more-items"><button type="button" data-tab="strategies">Strategy lab</button><button type="button" data-tab="paper">Paper trading</button><button type="button" data-tab="risk">Risk &amp; audit</button><button type="button" data-tab="ops">Opening check</button><button type="button" data-tab="control">Data control centre</button></div></details></nav>
+<nav class="nav" id="nav" aria-label="Main navigation"><button class="active" data-tab="overview" type="button">Home</button><button data-tab="markets" type="button">Markets</button><button data-tab="discover" type="button">Discover</button><button data-tab="research" type="button">Research</button><details id="moreNav" class="nav-more"><summary>More</summary><div class="nav-more-items"><button type="button" data-tab="social">Social Radar</button><button type="button" data-tab="strategies">Strategy lab</button><button type="button" data-tab="paper">Paper trading</button><button type="button" data-tab="risk">Risk &amp; audit</button><button type="button" data-tab="ops">Opening check</button><button type="button" data-tab="control">Data control centre</button></div></details></nav>
 <div class="bread"><div><h1 id="viewTitle">Your portfolio</h1><p id="marketClock">TIME — · US CASH SESSION —</p></div><div class="scope">PAPER ONLY<br>TRADING DISABLED</div></div>
 <section id="view-overview" class="view">
 <section class="panel daily-brief" aria-labelledby="briefHeading">
@@ -457,6 +457,42 @@ body{background:var(--bg)}.shell{max-width:1330px;padding-top:18px}
   </section>
  </div>
 </section>
+
+<section id="view-social" class="view hidden">
+  <div class="stack">
+    <section class="panel">
+      <div class="phead"><b>SOCIAL RADAR · EARLY ATTENTION</b><span>OWNER · RESEARCH ONLY</span></div>
+      <div class="pbody stack">
+        <div class="info">This independent tracker samples public Bluesky posts and looks for US share cashtags. It checks distinct authors, sampled mention counts and sudden increases relative to its own saved history. It also discovers some previously untracked tickers from broader stock discussions. <b>There is no Reddit access or prediction of profitable trades.</b></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+          <div><div class="signal">SOCIAL SOURCE HEALTH</div><div class="bigstat" id="socialState">NOT YET CHECKED</div></div>
+          <button id="socialRefresh" class="btn" type="button">REFRESH SOCIAL DATA ↻</button>
+        </div>
+        <div class="tiny mono" id="socialDetail">Sign in to see the saved research. Cloud sampling runs independently of your phone.</div>
+        <div class="metricrow">
+          <div class="metric"><div class="k">TICKERS CHECKED</div><div class="v" id="socialCount">—</div></div>
+          <div class="metric"><div class="k">ATTENTION BURSTS</div><div class="v" id="socialBurst">—</div></div>
+          <div class="metric"><div class="k">SOCIAL DISCOVERIES</div><div class="v" id="socialNew">—</div></div>
+        </div>
+        <div class="signal">CURRENT WATCH · NEW TICKERS AND UNUSUAL CHATTER</div>
+        <div class="stack" id="socialCandidates"><div class="locked">Awaiting real social observations. No shares are labelled as trending without source data.</div></div>
+        <div class="locked">This is a <b>research shortlist, never a trade approval</b>. A burst only means sampled social activity accelerated against prior samples. It is not full-market sentiment or evidence that a share will rise. Every trade must pass the independent market, company-event, strategy and risk checks; automatic paper execution remains OFF.</div>
+      </div>
+    </section>
+    <section class="panel">
+      <div class="phead"><b>HOW IT WORKS</b><span>DATA PROVENANCE</span></div>
+      <div class="pbody stack">
+        <div class="line"><span>Public source</span><b>Bluesky · partial search results</b></div>
+        <div class="line"><span>Sampling</span><b>Every 30 minutes · source permitting</b></div>
+        <div class="line"><span>Recent observation window</span><b>90 minutes</b></div>
+        <div class="line"><span>Evidence for attention spike</span><b>Multiple authors + historical baseline</b></div>
+        <div class="line"><span>Company/market confirmation</span><b>NOT VERIFIED BY THIS MODULE</b></div>
+        <div class="line"><span>Trade authority</span><b>NONE · VIRTUAL & REAL OFF</b></div>
+        <div class="tiny">Bluesky is only one social network. Search may return a limited subset of posts, so zero mentions means zero found in this sample — not that nobody is discussing a share. Reddit requires approved API access and is not being scraped. Surging attention can be manipulated and should never be treated as a probability of profit.</div>
+      </div>
+    </section>
+  </div>
+</section>
 <section id="view-control" class="view hidden">
 <div class="stack">
  <section class="panel"><div class="phead"><b>MARKET DATA · CONTROL CENTRE</b><span>SYSTEM HEALTH</span></div>
@@ -490,5 +526,5 @@ body{background:var(--bg)}.shell{max-width:1330px;padding-top:18px}
 <footer class="bottom">IIHQ · INDEPENDENT RESEARCH WORKSTATION · PAPER MODE<br>MARKET DATA: ALPACA IEX · PARTIAL US EXCHANGE COVERAGE · VIRTUAL BALANCES IN USD</footer>
 </main>
 <div class="overlay hidden" id="authOverlay" role="dialog" aria-modal="true" aria-labelledby="authTitle"><div class="dialog"><div style="display:flex;align-items:center;justify-content:space-between"><h2 id="authTitle">Authorised account access</h2><button class="close" id="authClose" aria-label="Close login">×</button></div><p>Sign in only when you need private portfolio details. Public market research requires no account.</p><div id="loginForm"><label for="email">EMAIL</label><input id="email" type="email" autocomplete="email" placeholder="your@email.com"><label for="password">PASSWORD</label><input id="password" type="password" autocomplete="current-password" placeholder="Supabase Auth password"><div class="authbuttons"><button class="btn" id="passwordLogin">SIGN IN</button><button class="btn" id="magicLogin">EMAIL SIGN-IN LINK</button></div></div><div id="signedIn" class="hidden"><div class="info">Authenticated as <b id="userEmail"></b></div><div class="authbuttons"><button class="btn" id="refresh">REFRESH PRIVATE DESK</button><button class="btn" id="signout">SIGN OUT</button></div></div><p id="authMessage" class="msg">Your Supabase administration login is separate from this dashboard user. Create an Auth user in the Investing HQ project first.</p></div></div>
-<script type="module" src="./app.js?v=20261028-daily-brief-v1"></script>
+<script type="module" src="./app.js?v=20261028-social-radar-v1"></script>
 </body></html>
