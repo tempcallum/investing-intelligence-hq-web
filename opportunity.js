@@ -17,7 +17,7 @@ function card(r){
  const heading=document.createElement('div');heading.style.display='flex';heading.style.flexWrap='wrap';
  heading.style.gap='8px';heading.style.justifyContent='space-between';
  const name=document.createElement('b');name.textContent=String(r.symbol||'—')+
-  ' · '+(r.source==='SOCIAL_CROSSOVER'?'social discovery':'liquid universe');
+  ' · '+(r.source==='SOCIAL_CROSSOVER'?'unusual social interest':r.source==='ACTIVE_DISCOVERY'?'new high-volume discovery':'established-share watchlist');
  const label=document.createElement('b');label.className=r.status==='STUDY_SETUP'?'green':'warning';
  label.textContent=String(r.status||'DATA_GAP').replaceAll('_',' ')+' · RESEARCH';
  heading.append(name,label);root.append(heading);
@@ -26,6 +26,15 @@ function card(r){
   ' · day '+num(r.day_change_pct)+'% · 30m '+num(r.momentum_30m_pct)+'%'+
   ' · spread '+num(r.spread_bps)+' bps · last trade '+uk(r.trade_at);
  root.append(p);
+ const thesis=document.createElement('div');thesis.className='tiny';thesis.style.marginTop='6px';
+ const day=Number(r.day_change_pct),momentum=Number(r.momentum_30m_pct);
+ const confirmed=Number.isFinite(day)&&Number.isFinite(momentum)&&r.day_change_pct!=null&&r.momentum_30m_pct!=null;
+ thesis.textContent=confirmed&&day>0&&momentum>0?
+  'WHY WATCH: positive session movement and a positive completed-bar 30-minute trend.':
+  r.status==='AVOID'?'WHY AVOID: source data indicates an extreme move or liquidity concern.':
+  r.status==='DATA_GAP'?'WHAT IS MISSING: an independently verified market price.':
+  'WHY WATCH: monitor for a clearer, independently verified upward trend and liquid quoted prices.';
+ root.append(thesis);
  if(r.status==='STUDY_SETUP'){
   const plan=document.createElement('div');plan.className='info';plan.style.marginTop='9px';
   plan.textContent='HYPOTHETICAL, NOT A FILL · entry $'+num(r.entry_idea_usd)+
@@ -33,6 +42,10 @@ function card(r){
    ' · 2R target $'+num(r.target_idea_usd)+
    ' · £35 position · about £0.88 initial price risk before fees, slippage, gaps and FX.';
   root.append(plan);
+  const condition=document.createElement('div');condition.className='tiny';
+  condition.style.marginTop='7px';
+  condition.textContent='WHAT WOULD INVALIDATE THIS IDEA: sustained price below the illustrated stop, stale quotes, a widening spread, deteriorating momentum or material company news. Stop prices do not guarantee execution.';
+  root.append(condition);
  }
  const note=document.createElement('div');note.className='tiny';note.style.marginTop='8px';
  const reasons=Array.isArray(r.reasons)?r.reasons.slice(0,5).map(x=>String(x).replaceAll('_',' ').toLowerCase()):[];
@@ -42,6 +55,12 @@ function card(r){
    num(r.followup_pct)+'% raw IEX move':String(r.followup_state||'NOT_ELIGIBLE').replaceAll('_',' ').toLowerCase())+
   ' · NO TRADE';
  root.append(note);
+ const relative=document.createElement('div');relative.className='tiny';
+ relative.style.marginTop='6px';
+ relative.textContent=r.followup_state==='MEASURED'&&r.followup_excess_spy_pct!=null?
+  'ABOUT ONE HOUR LATER: '+num(r.followup_excess_spy_pct)+'% relative to contemporaneous SPY, based on raw IEX last trades (not realised profit).':
+  'SPY comparison: not yet verified. Never count a missing benchmark as zero.';
+ root.append(relative);
  const btn=document.createElement('button');btn.type='button';btn.className='secondary';
  btn.style.marginTop='9px';btn.textContent='OPEN COMPANY RESEARCH';
  btn.addEventListener('click',()=>{
@@ -66,8 +85,11 @@ async function refresh(){
   if(!r.ok)throw Error('RESEARCH_SOURCE_UNAVAILABLE');
   const data=await r.json(),run=data.session||{},items=Array.isArray(data.candidates)?data.candidates:[];
   el('oppState').textContent=String(run.last_state||'NOT RUN').replaceAll('_',' ');
+  const active=String(run.active_source_state||'NOT RUN').replaceAll('_',' ');
   el('oppMeta').textContent='Last cloud check '+uk(run.last_attempt_at)+
-   ' · Alpaca IEX partial US feed'+(run.last_reason?' · '+String(run.last_reason):'');
+   ' · IEX price validation · most-active discovery: '+active+
+   ' ('+String(run.active_candidates??0)+' extra symbols)'+
+   (run.last_reason?' · '+String(run.last_reason):'');
   el('oppChecked').textContent=String(run.checked??0);
   el('oppSetups').textContent=String(run.study_setups??0);
   el('oppWatching').textContent=String(run.watching??0);
