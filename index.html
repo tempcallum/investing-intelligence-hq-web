@@ -480,13 +480,32 @@ body{background:var(--bg)}.shell{max-width:1330px;padding-top:18px}
       </div>
     </section>
     <section class="panel">
+      <div class="phead"><b>MARKET CONFIRMATION &amp; FORWARD EVIDENCE</b><span>IEX · RESEARCH ONLY</span></div>
+      <div class="pbody stack">
+        <div class="info">This independently checks US market hours, IEX quote and trade freshness, the observed IEX spread and volume, completed five-minute candles, and recent SEC filing flags. It follows initial observable prices after 30 minutes where comparable data exists. <b>Not order flow, profitable-trade evidence or earnings clearance.</b></div>
+        <div class="metricrow">
+          <div class="metric"><div class="k">LATEST CHECKED</div><div class="v" id="marketChecked">—</div></div>
+          <div class="metric"><div class="k">MOMENTUM OBSERVED</div><div class="v" id="marketMomentum">—</div></div>
+          <div class="metric"><div class="k">30-MIN FOLLOW-UPS</div><div class="v" id="marketMeasured">—</div></div>
+        </div>
+        <div class="tiny mono" id="marketConfirmStatus">Awaiting independent market-data checks.</div>
+        <div id="marketEvidence" class="stack"><div class="locked">No market-confirmation evidence has been loaded. No trade is authorised.</div></div>
+        <div class="locked">MOMENTUM OBSERVED means only that 30-minute IEX price movement met predefined research filters. It is not a validated prediction, a simulated fill or permission to invest. Company earnings, breaking news and market-wide liquidity remain unverified. The £100 virtual limit and £80 drawdown stop are not yet enforced by an executor.</div>
+      </div>
+    </section>
+    <section class="panel"><div class="phead"><b>SOCIAL + MARKET CROSS-CHECK</b><span>RESEARCH · IEX</span></div><div class="pbody stack">
+<div class="info">Independent US market checks link sampled social attention to fresh IEX price data, completed 5-minute candles, bid/ask spread, IEX volume and recent SEC disclosure warnings. Observed 30-minute changes are raw price comparisons, not trading profit.</div>
+<div class="metricrow"><div class="metric"><div class="k">CHECKS SAVED</div><div id="marketChecked" class="v">—</div></div><div class="metric"><div class="k">MOMENTUM</div><div id="marketMomentum" class="v">—</div></div><div class="metric"><div class="k">FOLLOW-UPS</div><div id="marketMeasured" class="v">—</div></div></div>
+<div class="tiny mono" id="marketConfirmStatus">No independent market check loaded.</div><div id="marketEvidence" class="stack">Market evidence awaiting verification.</div>
+<div class="locked">Market momentum is not a trading prediction or order authorisation. Corporate earnings, breaking news and whole-market prices are not fully verified. Virtual paper orders remain disabled.</div></div></section>
+<section class="panel">
       <div class="phead"><b>HOW IT WORKS</b><span>DATA PROVENANCE</span></div>
       <div class="pbody stack">
         <div class="line"><span>Public source</span><b>Bluesky · partial search results</b></div>
         <div class="line"><span>Sampling</span><b>Every 30 minutes · source permitting</b></div>
         <div class="line"><span>Recent observation window</span><b>90 minutes</b></div>
         <div class="line"><span>Evidence for attention spike</span><b>Multiple authors + historical baseline</b></div>
-        <div class="line"><span>Company/market confirmation</span><b>NOT VERIFIED BY THIS MODULE</b></div>
+        <div class="line"><span>Independent market check</span><b>5-minute IEX candles + freshness + spread</b></div><div class="line"><span>Corporate-event clearance</span><b>UNVERIFIED · recent SEC flags only</b></div>
         <div class="line"><span>Trade authority</span><b>NONE · VIRTUAL & REAL OFF</b></div>
         <div class="tiny">Bluesky is only one social network. Search may return a limited subset of posts, so zero mentions means zero found in this sample — not that nobody is discussing a share. Reddit requires approved API access and is not being scraped. Surging attention can be manipulated and should never be treated as a probability of profit.</div>
       </div>
@@ -526,5 +545,5 @@ body{background:var(--bg)}.shell{max-width:1330px;padding-top:18px}
 <footer class="bottom">IIHQ · INDEPENDENT RESEARCH WORKSTATION · PAPER MODE<br>MARKET DATA: ALPACA IEX · PARTIAL US EXCHANGE COVERAGE · VIRTUAL BALANCES IN USD</footer>
 </main>
 <div class="overlay hidden" id="authOverlay" role="dialog" aria-modal="true" aria-labelledby="authTitle"><div class="dialog"><div style="display:flex;align-items:center;justify-content:space-between"><h2 id="authTitle">Authorised account access</h2><button class="close" id="authClose" aria-label="Close login">×</button></div><p>Sign in only when you need private portfolio details. Public market research requires no account.</p><div id="loginForm"><label for="email">EMAIL</label><input id="email" type="email" autocomplete="email" placeholder="your@email.com"><label for="password">PASSWORD</label><input id="password" type="password" autocomplete="current-password" placeholder="Supabase Auth password"><div class="authbuttons"><button class="btn" id="passwordLogin">SIGN IN</button><button class="btn" id="magicLogin">EMAIL SIGN-IN LINK</button></div></div><div id="signedIn" class="hidden"><div class="info">Authenticated as <b id="userEmail"></b></div><div class="authbuttons"><button class="btn" id="refresh">REFRESH PRIVATE DESK</button><button class="btn" id="signout">SIGN OUT</button></div></div><p id="authMessage" class="msg">Your Supabase administration login is separate from this dashboard user. Create an Auth user in the Investing HQ project first.</p></div></div>
-<script type="module" src="./app.js?v=20261028-social-radar-v1"></script>
+<script type="module" src="./app.js?v=20261028-social-market-v1"></script>
 </body></html>
