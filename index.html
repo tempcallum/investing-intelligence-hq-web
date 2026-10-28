@@ -62,6 +62,19 @@
 .candle-swatch.up{background:#80dfaa}.candle-swatch.down{background:#ef8d87}
 .candle-legend .sma9{color:#efc77d}.candle-legend .sma21{color:#8ab6ed}
 @media(max-width:750px){.candle-chart{height:325px}.candle-timeframes button{padding:9px 10px}.candle-head .ov-eyebrow{font-size:10px}}
+
+/* Daily plain-English desk recap on Home */
+.daily-brief{margin-bottom:16px;border-color:#3a6453;background:linear-gradient(115deg,#132c25,#0f1d1e)}
+.daily-brief .phead{border-bottom-color:#294e41}
+.daily-brief-top{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.daily-brief-title{font-size:clamp(19px,2.8vw,25px);font-weight:790;letter-spacing:-.5px;margin:5px 0}
+.daily-brief-content{display:grid;gap:10px;font-size:14px;line-height:1.7;color:#e1f2e8;white-space:normal}
+.daily-brief-content p{margin:0;padding:0 0 10px;border-bottom:1px solid #274238}
+.daily-brief-content p:last-child{border-bottom:0;padding-bottom:0}
+.daily-brief-controls{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.daily-brief-controls select{min-width:165px;max-width:100%;padding:8px 11px;background:#132a24;border:1px solid #3d6254;color:#e6f8ec;border-radius:9px}
+.daily-brief .secondary{min-height:36px;padding:8px 12px;font-size:12px}
+@media(max-width:550px){.daily-brief .pbody{padding:16px}.daily-brief-title{font-size:21px}.daily-brief-content{font-size:14px}}
 /* Design v2: calm visual hierarchy and mobile navigation */
 :root{--bg:#0a1113;--layer:#101b1d;--layer2:#142124;--stroke:#29423e;--ink:#e9f3ee;--muted:#a3b7b1}
 body{background:var(--bg)}.shell{max-width:1330px;padding-top:18px}
@@ -142,6 +155,25 @@ body{background:var(--bg)}.shell{max-width:1330px;padding-top:18px}
 <nav class="nav" id="nav" aria-label="Main navigation"><button class="active" data-tab="overview" type="button">Home</button><button data-tab="markets" type="button">Markets</button><button data-tab="discover" type="button">Discover</button><button data-tab="research" type="button">Research</button><details id="moreNav" class="nav-more"><summary>More</summary><div class="nav-more-items"><button type="button" data-tab="strategies">Strategy lab</button><button type="button" data-tab="paper">Paper trading</button><button type="button" data-tab="risk">Risk &amp; audit</button><button type="button" data-tab="ops">Opening check</button><button type="button" data-tab="control">Data control centre</button></div></details></nav>
 <div class="bread"><div><h1 id="viewTitle">Your portfolio</h1><p id="marketClock">TIME — · US CASH SESSION —</p></div><div class="scope">PAPER ONLY<br>TRADING DISABLED</div></div>
 <section id="view-overview" class="view">
+<section class="panel daily-brief" aria-labelledby="briefHeading">
+  <div class="phead"><b id="briefHeading">YOUR DAY, EXPLAINED</b><span>PLAIN ENGLISH</span></div>
+  <div class="pbody stack">
+    <div class="daily-brief-top">
+      <div>
+        <div class="ov-eyebrow">WHAT IIHQ FOUND AND DID</div>
+        <div class="daily-brief-title" id="briefTitle">Today's update</div>
+        <div class="tiny" id="briefMeta">A new report is prepared after the US market closes.</div>
+      </div>
+      <button class="secondary" id="briefRefresh" type="button">REFRESH ↻</button>
+    </div>
+    <div class="daily-brief-content" id="briefContent">IIHQ checks for opportunities even while your phone is closed. After the US market closes, you'll see a clear explanation of what it checked and whether any practice trades happened.</div>
+    <div class="daily-brief-controls">
+      <label for="briefDate" class="tiny">Previous days</label>
+      <select id="briefDate" aria-label="Choose a completed daily report"><option value="">Latest report</option></select>
+    </div>
+    <div class="tiny">Practice money only. This is a record of what the automatic system did, not a promise of profit. The report is written from saved facts, not guesses.</div>
+  </div>
+</section>
 <div class="ov-wrap">
  <div class="stack">
   <div class="ov-hero">
@@ -458,5 +490,5 @@ body{background:var(--bg)}.shell{max-width:1330px;padding-top:18px}
 <footer class="bottom">IIHQ · INDEPENDENT RESEARCH WORKSTATION · PAPER MODE<br>MARKET DATA: ALPACA IEX · PARTIAL US EXCHANGE COVERAGE · VIRTUAL BALANCES IN USD</footer>
 </main>
 <div class="overlay hidden" id="authOverlay" role="dialog" aria-modal="true" aria-labelledby="authTitle"><div class="dialog"><div style="display:flex;align-items:center;justify-content:space-between"><h2 id="authTitle">Authorised account access</h2><button class="close" id="authClose" aria-label="Close login">×</button></div><p>Sign in only when you need private portfolio details. Public market research requires no account.</p><div id="loginForm"><label for="email">EMAIL</label><input id="email" type="email" autocomplete="email" placeholder="your@email.com"><label for="password">PASSWORD</label><input id="password" type="password" autocomplete="current-password" placeholder="Supabase Auth password"><div class="authbuttons"><button class="btn" id="passwordLogin">SIGN IN</button><button class="btn" id="magicLogin">EMAIL SIGN-IN LINK</button></div></div><div id="signedIn" class="hidden"><div class="info">Authenticated as <b id="userEmail"></b></div><div class="authbuttons"><button class="btn" id="refresh">REFRESH PRIVATE DESK</button><button class="btn" id="signout">SIGN OUT</button></div></div><p id="authMessage" class="msg">Your Supabase administration login is separate from this dashboard user. Create an Auth user in the Investing HQ project first.</p></div></div>
-<script type="module" src="./app.js?v=20261028-candles-v3"></script>
+<script type="module" src="./app.js?v=20261028-daily-brief-v1"></script>
 </body></html>
