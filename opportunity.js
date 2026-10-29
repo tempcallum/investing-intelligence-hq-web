@@ -152,7 +152,7 @@ async function refreshVirtualStrategy(){
   el('virtualCash').textContent=money(a.cash_gbp);
   el('virtualOpen').textContent=String(rows.filter(x=>x.status==='OPEN').length);
   el('virtualPause').disabled=a.enabled!==true;
-  el('virtualMessage').textContent='Last marked '+uk(a.last_mark_at)+
+  el('virtualMessage').textContent='Holding policy: '+(a.trade_horizon==='DAY_ONLY'?'DAY TRADING ONLY':'UNVERIFIED')+' · Last marked '+uk(a.last_mark_at)+
    ' · virtual maximum per position '+money(a.max_position_gbp)+
    ' · rule-based entry bands £40 / £70 / £100'+
    ' · GBP risk pause £80 · simulated virtual entries only'+
