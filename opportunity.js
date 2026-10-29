@@ -41,7 +41,7 @@ function card(r){
   plan.textContent='HYPOTHETICAL, NOT A FILL · entry $'+num(r.entry_idea_usd)+
    ' · suggested invalidation $'+num(r.stop_idea_usd)+
    ' · 2R target $'+num(r.target_idea_usd)+
-   ' · £35 position · about £0.88 initial price risk before fees, slippage, gaps and FX.';
+   ' · £100 worked example · about £2.50 initial price risk before costs, gaps and FX. Actual virtual entry sizes are £40, £70 or £100, subject to remaining cash and stricter checks.';
   root.append(plan);
   const condition=document.createElement('div');condition.className='tiny';
   condition.style.marginTop='7px';
@@ -153,6 +153,8 @@ async function refreshVirtualStrategy(){
   el('virtualOpen').textContent=String(rows.filter(x=>x.status==='OPEN').length);
   el('virtualPause').disabled=a.enabled!==true;
   el('virtualMessage').textContent='Last marked '+uk(a.last_mark_at)+
+   ' · virtual maximum per position '+money(a.max_position_gbp)+
+   ' · rule-based entry bands £40 / £70 / £100'+
    ' · GBP risk pause £80 · simulated virtual entries only'+
    (a.last_error?' · '+String(a.last_error).replaceAll('_',' '):'')+
    ' · NEVER Alpaca orders';
