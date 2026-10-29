@@ -27,6 +27,15 @@ function card(r){
   ' · day '+num(r.day_change_pct)+'% · 30m '+num(r.momentum_30m_pct)+'%'+
   ' · spread '+num(r.spread_bps)+' bps · last trade '+uk(r.trade_at);
  root.append(p);
+ const mood=document.createElement('div');mood.className='tiny';
+ mood.style.marginTop='6px';
+ const state=String(r.crowd_state||'NOT_EVALUATED').replaceAll('_',' ').toLowerCase();
+ const pressure=Array.isArray(r.crowd_factors)?r.crowd_factors.slice(0,3).
+  map(x=>String(x).replaceAll('_',' ').toLowerCase()):[];
+ mood.textContent='CROWD-BEHAVIOUR CLUES · '+state+
+  (pressure.length?' · evidence: '+pressure.join('; '):' · limited evidence')+
+  ' · NOT a buy or sell signal.';
+ root.append(mood);
  const thesis=document.createElement('div');thesis.className='tiny';thesis.style.marginTop='6px';
  const day=Number(r.day_change_pct),momentum=Number(r.momentum_30m_pct);
  const confirmed=Number.isFinite(day)&&Number.isFinite(momentum)&&r.day_change_pct!=null&&r.momentum_30m_pct!=null;
@@ -88,8 +97,13 @@ async function refresh(){
   el('oppState').textContent=String(run.last_state||'NOT RUN').replaceAll('_',' ');
   const active=String(run.active_source_state||'NOT RUN').replaceAll('_',' ');
   el('oppMeta').textContent='Last cloud check '+uk(run.last_attempt_at)+
-   ' · IEX price validation · most-active discovery: '+active+
-   ' ('+String(run.active_candidates??0)+' extra symbols)'+
+   ' · exchange-wide ranked names: '+String(run.wide_ranked_count??0)+
+   ' · deep checks: '+String(run.checked??0)+
+   ' · regular watchlist plus most-active and mover screens'+
+   ' · wide-screen health: '+String(run.wide_source_state||'NOT RUN').replaceAll('_',' ')+
+   ' · candidate extras: '+String(run.wide_selected_count??run.active_candidates??0)+
+   (run.universe_verified_at?' · Alpaca eligible stock inventory: '+
+     String(run.universe_eligible_count??0)+' (last checked '+uk(run.universe_verified_at)+')':'')+
    (run.last_reason?' · '+String(run.last_reason):'');
   el('oppChecked').textContent=String(run.checked??0);
   el('oppSetups').textContent=String(run.study_setups??0);
