@@ -212,6 +212,7 @@ async function refreshDesk(token){
    await refreshSavedScans();
    if(!$('view-overview').classList.contains('hidden'))await refreshPortfolio();
    if(!$('view-overview').classList.contains('hidden'))await refreshDailyBrief();
+   if(!$('view-overview').classList.contains('hidden'))refreshProfitProof().catch(()=>{});
  }catch(_){
    clearPrivateAccountUI();ownerApproved=false;
    $('authClose').classList.add('hidden');overlay(true);
@@ -1262,6 +1263,7 @@ async function refreshEvidenceStudy(session){
 // Clear every private value when logged out or if the owner check fails.
 function clearPrivateAccountUI(){
  clearStrategyLab();
+ clearProfitProof();
  $('paperExecutorStatus').textContent='Sign in to verify paper execution status.';
  $('paperPause').disabled=true;
  $('riskEnabled').textContent='UNVERIFIED';
@@ -1731,3 +1733,63 @@ async function refreshStrategyLab(){
  finally{$('labRefresh').disabled=false;}
 }
 $('labRefresh')?.addEventListener('click',refreshStrategyLab);
+
+
+// IIHQ Profitability Validation V1: show evidence state without treating price touches as trades.
+let proofRequest=0;
+function clearProfitProof(){
+ proofRequest++;
+ for(const id of ['proofQuestions','proofGates'])$(id)?.replaceChildren();
+ if($('proofState'))$('proofState').textContent='Sign in to check what IIHQ can really prove.';
+ for(const id of ['proofEquity','proofApproved','proofProgress'])if($(id))$(id).textContent='—';
+ if($('proofDifference'))$('proofDifference').textContent='Virtual simulation is not certified historical profitability.';
+ if($('proofRefresh'))$('proofRefresh').disabled=false;
+}
+async function refreshProfitProof(){
+ const ticket=++proofRequest;
+ if(!ownerApproved){clearProfitProof();return;}
+ const {data:{session}}=await client.auth.getSession();
+ if(!session){clearProfitProof();return;}
+ $('proofRefresh').disabled=true;
+ $('proofState').textContent='Checking read-only evidence and background research progress…';
+ const questions=$('proofQuestions'),gates=$('proofGates');
+ questions.replaceChildren();gates.replaceChildren();
+ const gbp=n=>typeof n==='number'&&Number.isFinite(n)?new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP'}).format(n):'Not proven';
+ function line(target,title,body){
+  const p=document.createElement('div');p.className='tiny';
+  const heading=document.createElement('b');heading.textContent=title+' — ';
+  p.append(heading,document.createTextNode(String(body||'No verified source')));
+  target.append(p);
+ }
+ try{
+  const r=await fetch(PROJECT_URL+'/functions/v1/iihq-profitability-validation?action=overview',{
+   cache:'no-store',method:'GET',headers:{Authorization:'Bearer '+session.access_token}});
+  if(!r.ok)throw Error('REPORT_UNAVAILABLE');
+  const d=await r.json();
+  if(ticket!==proofRequest||!ownerApproved)return;
+  if(d.verdict!=='NOT_VALIDATED'||d.certified_profit_gbp!==null||d.safe_to_promote!==false)
+   throw Error('UNEXPECTED_CERTIFICATION');
+  $('proofState').textContent='NOT YET PROVEN · Read-only evidence checked '+new Date(d.generated_at).toLocaleString('en-GB',{timeZone:'Europe/London',dateStyle:'medium',timeStyle:'short'})+'.';
+  $('proofEquity').textContent=gbp(d.virtual?.equity_gbp);
+  $('proofApproved').textContent=String(d.historical?.fully_approved_historical_observations??'—');
+  $('proofProgress').textContent=String((d.lab?.development?.complete||0)+(d.lab?.validation?.complete||0))+'/40';
+  $('proofDifference').textContent='Virtual realised P/L '+gbp(d.virtual?.realised_pnl_gbp)+' on '+
+   String(d.virtual?.closed_trades??'—')+' simulated closed trades. Certified historical profit: NOT AVAILABLE. '+
+   (d.safety?.paper_disabled_verified?'Alpaca paper orders confirmed disabled.':'CHECK PAPER ORDER STATE.');
+  const labels={would_buy:'Would IIHQ have bought?',would_sell_profitably:'Would it sell at a net profit?',could_afford:'Could our £100 afford it?'};
+  for(const [id,label] of Object.entries(labels)){
+   const obj=d.questions?.[id];
+   line(questions,label,(obj?.verdict||'UNCONFIRMED').replaceAll('_',' ')+' · '+(obj?.detail||''));
+  }
+  for(const g of d.gates||[])line(gates,g.id.replaceAll('_',' '),g.status+' · '+g.reason);
+  line(gates,'Strategy Lab collection',d.lab?.healthy?'Collector checking regularly.':'Collector needs checking.');
+  line(gates,'Future test',d.lab?.holdout?.sealed?'SEALED until 2 February 2027.':'Results require independent review.');
+  for(const issue of d.operational_issues||[])line(gates,'Operational issue',issue);
+ }catch(_){
+  if(ticket===proofRequest&&ownerApproved){
+   $('proofState').textContent='Evidence report unavailable. No profitability or safety status can be confirmed from this screen.';
+   $('proofEquity').textContent='—';$('proofApproved').textContent='—';$('proofProgress').textContent='—';
+  }
+ }finally{if(ticket===proofRequest)$('proofRefresh').disabled=false;}
+}
+$('proofRefresh')?.addEventListener('click',()=>refreshProfitProof().catch(()=>{}));
