@@ -61,7 +61,7 @@ function setSymbol(s){
  $('backtestSymbol').textContent=s;
  $('riskTicker').textContent=s;
  $('riskVerdict').textContent='NO TRADE · NOT CHECKED';
- $('riskSummary').textContent='Run the data-quality checks for '+s+'; no trading can occur.';
+ $('riskSummary').textContent='Run the data-quality checks for '+s+'; this research check cannot submit orders.';
  $('riskCheckList').textContent='Awaiting market-readiness data for '+s+'.';
  $('backtestStatus').textContent='Historical result not run for '+s+'. Select a lookback and run the test.';
  for(const id of ['btTrainReturn','btTestReturn','btTestTrades','btTestDD','btTestWin','btTestPF'])$(id).textContent='—';
@@ -206,8 +206,8 @@ async function refreshDesk(token){
    $('paperEquity').textContent='AWAITING ALPACA PAPER LINK';
    $('paperMessage').textContent='Owner verified. The Alpaca paper account has not yet been linked and virtual balance has not been retrieved.';
    $('orderBlotter').textContent=(data.events?.length??0)+' recent internal event(s) available in database. No verified brokerage orders have been connected.';
-   $('riskDetails').textContent='Private database connection verified. The order executor is not deployed and live-money trading is unsupported.';
-   note('Private owner access verified. No trade execution is enabled.');
+   $('riskDetails').textContent='Private database connection verified. Checking separate Alpaca paper executor status. Live-money trading is unsupported.';
+   note('Private owner access verified. Checking paper execution status.');
    await refreshAlpaca();
    await refreshSavedScans();
    if(!$('view-overview').classList.contains('hidden'))await refreshPortfolio();
@@ -313,6 +313,7 @@ async function refreshAlpaca(){
       String(o.symbol)+' · '+String(o.side).toUpperCase()+' '+String(o.qty??''),
       String(o.status).toUpperCase()));
   }
+  await refreshPaperExecutor(session);
   await loadMarketData();
 }
 async function loadMarketData(){
@@ -740,7 +741,7 @@ async function refreshReadiness(){
    $('riskBlocks').textContent=String(r.summary?.blocked??'—');
    $('riskUnknown').textContent=String(r.summary?.unknown??'—');
    $('riskSummary').textContent='Checked '+new Date(r.assessed_at).toLocaleString('en-GB')+
-     ' · '+r.source_fetched_count+'/'+r.source_requested_count+' independent API requests answered · trade execution disabled.';
+     ' · '+r.source_fetched_count+'/'+r.source_requested_count+' independent API requests answered · research checks do not authorise trades.';
    const zone=$('riskCheckList');zone.replaceChildren();
    for(const item of r.checks||[]){
      const block=document.createElement('div');block.className='panel';
@@ -1260,6 +1261,9 @@ async function refreshEvidenceStudy(session){
 
 // Clear every private value when logged out or if the owner check fails.
 function clearPrivateAccountUI(){
+ $('paperExecutorStatus').textContent='Sign in to verify paper execution status.';
+ $('paperPause').disabled=true;
+ $('riskEnabled').textContent='UNVERIFIED';
  briefReports=[];
  $('socialState').textContent='OWNER SIGN-IN REQUIRED';
  $('socialDetail').textContent='Sign in to read private social research.';
@@ -1372,7 +1376,7 @@ async function refreshPortfolio(){
   $('ovInvested').textContent=payload.positions_verified?ovMoney(payload.invested_market_value):'Unverified';
   ovPositionsDraw(Array.isArray(payload.positions)?payload.positions:[],payload.positions_verified===true);
   ovChartDraw(payload.history?.points);
-  $('ovStatus').textContent='Read-only virtual portfolio. *Daily movement is account equity minus prior-close equity and can be affected by balance adjustments. No orders are enabled.';
+  $('ovStatus').textContent='Read-only virtual portfolio. *Daily movement is account equity minus prior-close equity and can be affected by balance adjustments. See Paper trading desk for the separately verified executor status.';
  }catch(_){
   if(id!==portfolioRequest)return;
   $('ovBalance').textContent='Unavailable';$('ovDay').textContent='Could not verify the paper portfolio';
@@ -1453,7 +1457,7 @@ async function refreshDataControl(){
     (market.is_open&&(data.quotes||[]).some(q=>q.state!=='RECENT'));
   $('ctrlVerdict').textContent=unhealthy?
     'SOME CHECKS REQUIRE ATTENTION. Check scanner status, feed age and missing data. No trades are authorised.':
-    'RESEARCH INFRASTRUCTURE RESPONDING. Market closed and closed-session quote ages are normal. No trade execution is authorised.';
+    'RESEARCH INFRASTRUCTURE RESPONDING. Market closed and closed-session quote ages are normal. This research check is not trade authorisation; see Paper trading desk.';
  }catch(_){
   $('ctrlMarket').textContent='CHECK FAILED';
   $('ctrlVerdict').textContent='The private control service did not respond. Do not assume any feed is healthy.';
@@ -1633,4 +1637,43 @@ $('briefRefresh').addEventListener('click',()=>refreshDailyBrief().catch(()=>{})
 $('briefDate').addEventListener('change',()=>{
  const report=briefReports.find(x=>x.market_date===$('briefDate').value);
  briefRender(report||null);
+});
+
+
+
+// Broker execution status is separate from the internal virtual ledger and research.
+async function refreshPaperExecutor(session){
+ try{
+  const r=await fetch(PROJECT_URL+'/functions/v1/iihq-alpaca-paper-executor?action=overview',{
+   cache:'no-store',headers:{Authorization:'Bearer '+session.access_token}});
+  if(!r.ok)throw Error('EXECUTOR_STATUS_UNAVAILABLE');
+  const d=await r.json();if(!ownerApproved)return;
+  const c=d.control||{},age=(Date.now()-Date.parse(c.last_check_at||''))/60000;
+  const fresh=Number.isFinite(age)&&age>=0&&age<=3;
+  const enabled=c.enabled===true&&d.master_enabled===true&&!c.paused_reason;
+  const mode=enabled?'PAPER ENTRIES ENABLED':'NEW PAPER ENTRIES PAUSED';
+  $('riskEnabled').textContent=mode+(fresh?'':' · HEARTBEAT UNVERIFIED');
+  $('paperExecutorStatus').textContent=mode+' · '+(fresh?'Worker checked recently':'Worker heartbeat missing or stale')+
+   ' · Last result: '+String(c.last_state||'NOT_CHECKED')+
+   (c.last_error?' · '+String(c.last_error):'')+
+   ' · £100 strategy allocation, £100 maximum order, £80 entry-pause threshold. '+
+   'Software exits: 2.5% stop, 5% target, 65-minute time limit, exit before close. '+
+   'Price stops depend on fresh IEX data; timed exits do not. News clearance is limited to the existing SEC warning check. '+
+   'GBP results use indicative FX and exclude broker fees. No real-money route.';
+  $('riskDetails').textContent=$('paperExecutorStatus').textContent;
+  $('paperPause').disabled=!enabled;
+ }catch{
+  $('paperExecutorStatus').textContent='Paper executor status could not be verified. Do not infer trading status from research or the internal simulator.';
+  $('riskEnabled').textContent='UNVERIFIED';$('paperPause').disabled=true;
+ }
+}
+$('paperPause').addEventListener('click',async()=>{
+ const {data:{session}}=await client.auth.getSession();if(!session||!ownerApproved)return;
+ $('paperPause').disabled=true;
+ try{
+  const r=await fetch(PROJECT_URL+'/functions/v1/iihq-alpaca-paper-executor?action=pause',{
+   method:'POST',headers:{Authorization:'Bearer '+session.access_token}});
+  if(!r.ok)throw Error('PAUSE_FAILED');
+  await refreshPaperExecutor(session);
+ }catch{$('paperExecutorStatus').textContent='Pause was not confirmed. Refresh to verify the current status.'}
 });

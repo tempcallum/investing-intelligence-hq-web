@@ -1,5 +1,6 @@
 // IIHQ: cache ONLY public icon assets and the offline explanation.
 // NEVER cache user sessions, pages containing account data, Supabase APIs or broker responses.
+// Paper executor status interface refresh: 30 October 2026.
 const CACHE='iihq-public-assets-v1';
 const PUBLIC=['./offline.html','./icons/iihq-icon-192.png','./icons/iihq-icon-512.svg'];
 self.addEventListener('install',event=>{
@@ -18,3 +19,4 @@ self.addEventListener('fetch',event=>{
     event.respondWith(fetch(req).catch(()=>caches.match('./offline.html')));
   }
 });
+
