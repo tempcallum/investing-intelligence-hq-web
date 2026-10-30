@@ -1658,7 +1658,9 @@ async function refreshPaperExecutor(session){
    (c.last_error?' · '+String(c.last_error):'')+
    ' · £100 strategy allocation, £100 maximum order, £80 entry-pause threshold. '+
    'Software exits: 2.5% stop, 5% target, 65-minute time limit, exit before close. '+
-   'Price stops depend on fresh IEX data; timed exits do not. News clearance is limited to the existing SEC warning check. '+
+   'Price stops depend on fresh IEX data; timed exits do not. '+
+   'COUNCIL: earnings/news and positive strategy edge are currently unverified and BLOCK new broker-paper orders. '+
+   'Target one qualifying simulated trade a day, NEVER forced. '+
    'GBP results use indicative FX and exclude broker fees. No real-money route.';
   $('riskDetails').textContent=$('paperExecutorStatus').textContent;
   $('paperPause').disabled=!enabled;
