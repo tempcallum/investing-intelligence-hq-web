@@ -1261,6 +1261,7 @@ async function refreshEvidenceStudy(session){
 
 // Clear every private value when logged out or if the owner check fails.
 function clearPrivateAccountUI(){
+ clearStrategyLab();
  $('paperExecutorStatus').textContent='Sign in to verify paper execution status.';
  $('paperPause').disabled=true;
  $('riskEnabled').textContent='UNVERIFIED';
@@ -1679,3 +1680,54 @@ $('paperPause').addEventListener('click',async()=>{
   await refreshPaperExecutor(session);
  }catch{$('paperExecutorStatus').textContent='Pause was not confirmed. Refresh to verify the current status.'}
 });
+
+
+// Owner-only Strategy Lab. textContent only; no stored private results or broker actions.
+let labRequest=0;
+function clearStrategyLab(){
+ labRequest++;
+ for(const id of ['labResults','labAgents','labReasons'])$(id)?.replaceChildren();
+ if($('labStatus'))$('labStatus').textContent='Private strategy research is locked.';
+}
+async function refreshStrategyLab(){
+ const request=++labRequest;
+ if(!ownerApproved){clearStrategyLab();overlay(true);return;}
+ const {data:{session}}=await client.auth.getSession();
+ if(!session){clearStrategyLab();return;}
+ $('labRefresh').disabled=true;
+ $('labResults').replaceChildren();$('labAgents').replaceChildren();$('labReasons').replaceChildren();
+ $('labStatus').textContent='Checking collection progress and comparing frozen rules…';
+ const money=n=>typeof n==='number'&&Number.isFinite(n)?new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP'}).format(n):'Unavailable';
+ try{
+  const query=new URLSearchParams({action:'overview',split:$('labSplit').value,monthly_overhead:$('labOverhead').value,fee_per_order:$('labFee').value});
+  const r=await fetch(PROJECT_URL+'/functions/v1/iihq-strategy-lab?'+query,{cache:'no-store',headers:{Authorization:'Bearer '+session.access_token}});
+  const d=await r.json();if(!r.ok)throw Error(d.error||'RESEARCH_UNAVAILABLE');
+  if(request!==labRequest||!ownerApproved)return;
+  const completed=d.jobs.filter(j=>j.state==='COMPLETE').length,blocked=d.jobs.filter(j=>j.state==='BLOCKED').length;
+  $('labStatus').textContent=d.sealed?'Future holdout sealed until 2 February 2027. No performance shown.':
+   `${d.analysed_sessions}/${d.expected_sessions} sessions analysed in this period. ${completed}/${d.jobs.length} collection jobs complete; ${blocked} blocked. No rule is certified profitable. `+
+   (d.runtime?.last_error?'Collector error: '+d.runtime.last_error:'Collector: '+(d.runtime?.last_state||'Awaiting first run'));
+  if(!d.sealed&&d.analysed_sessions){
+   for(const x of d.results){
+    const box=document.createElement('div');box.className='panel';box.style.padding='12px';
+    const name=document.createElement('b');name.textContent=x.name+' · '+x.cost_scenario+' costs';box.append(name);
+    const details=document.createElement('div');details.className='tiny';details.textContent=
+     `Scenario profit ${money(x.scenario_profit_gbp)} · after overhead ${money(x.scenario_after_overhead_gbp)} · ${x.trade_count} trades · bar-based drawdown ${x.bar_proxy_drawdown_pct.toFixed(2)}%. `+
+     `Estimated trading costs ${money(x.estimated_trading_cost_gbp)}. Approximate break-even win rate after assumed costs: ${x.break_even_approx_after_cost_pct.toFixed(1)}% (excludes any flat fees).`;
+    box.append(details);
+    const list=document.createElement('details'),summary=document.createElement('summary');summary.textContent='View trades and account path';list.append(summary);
+    for(const t of x.trades){const p=document.createElement('div');p.className='tiny';p.textContent=`${t.day} ${t.symbol} · stake ${money(t.stake_gbp)} · ${money(t.pnl_gbp)} · ${t.reason}`;list.append(p);}
+    for(const j of x.journal){const p=document.createElement('div');p.className='tiny';p.textContent=j.day+' · '+j.reason;list.append(p);}
+    for(const point of x.curve){const p=document.createElement('div');p.className='tiny';p.textContent=(point.day||'Starting capital')+' · '+money(point.equity);list.append(p);}
+    box.append(list);$('labResults').append(box);
+   }
+   const p=document.createElement('div');p.className='info';p.textContent='Cash benchmark: £0 before overhead. SPY same-session scenario: '+money(d.benchmarks.market.scenario_profit_gbp)+'. '+(d.benchmarks.market.note||d.benchmarks.market.status);$('labResults').append(p);
+  }
+  const regimes=document.createElement('div');regimes.textContent='Observed market mix: '+Object.entries(d.regime_coverage).map(([k,v])=>k+' '+v).join(' · ')+'. '+d.regime_note;$('labAgents').append(regimes);
+  for(const a of d.agents){const p=document.createElement('div');p.textContent=a.role.replaceAll('_',' ')+': '+(a.verdict||a.implementation.replaceAll('_',' '))+'. No broker authority.';$('labAgents').append(p);}
+  const reasons=d.agents.find(a=>a.role==='DATA_AUDITOR')?.reasons||{};
+  for(const [reason,count] of Object.entries(reasons).sort((a,b)=>b[1]-a[1])){const p=document.createElement('div');p.textContent=reason.replaceAll('_',' ')+': '+count;$('labReasons').append(p);}
+ }catch(e){if(request===labRequest)$('labStatus').textContent='Strategy Lab unavailable: '+e.message+'. No orders submitted.';}
+ finally{$('labRefresh').disabled=false;}
+}
+$('labRefresh')?.addEventListener('click',refreshStrategyLab);

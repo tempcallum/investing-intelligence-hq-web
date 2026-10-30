@@ -358,6 +358,22 @@ body{background:var(--bg)}.shell{max-width:1330px;padding-top:18px}
     </div>
   </section>
 </div>
+<section class="panel" style="margin-top:12px" id="strategyLab">
+ <div class="phead"><b>STRATEGY LAB / £100 PORTFOLIO</b><small>RESEARCH ONLY</small></div>
+ <div class="pbody stack">
+  <div class="info">Lead test candidate: <b>+1.5% target / −0.75% stop</b>. This is a hypothesis, not a proven improvement. The active +5% / −2.5% model and paper permissions are unchanged.</div>
+  <label>Test period <select id="labSplit"><option value="legacy">Previously studied pilot</option><option value="development">2024 development windows</option><option value="validation">2025 validation windows</option><option value="holdout">Sealed future test</option></select></label>
+  <label>Monthly AI/data overhead (£) <input id="labOverhead" type="number" min="0" max="1000" step="0.01" value="0" inputmode="decimal"></label>
+  <label>Fee per order (£) <input id="labFee" type="number" min="0" max="10" step="0.01" value="0" inputmode="decimal"></label>
+  <div class="tiny">Default £0 is an assumption. Enter actual recurring costs. Each sampled month receives a full month's overhead; trading costs are included separately.</div>
+  <button class="btn" id="labRefresh" type="button">REFRESH STRATEGY COMPARISON</button>
+  <div id="labStatus" class="locked">Sign in and refresh to see private research. No trading controls are changed here.</div>
+  <div id="labResults" class="stack"></div>
+  <div id="labAgents" class="stack tiny"></div>
+  <div id="labReasons" class="stack tiny"></div>
+  <div class="tiny">One continuous £100 scenario per rule within each selected test period, at most one entry per session, no planned overnight holding. Missing eligibility, news, FX or executable prices prevent certification. These are five-minute bar scenarios, not broker fills. Independent research roles use deterministic code, not an LLM or a human committee.</div>
+ </div>
+</section>
 <section class="panel" style="margin-top:12px">
 <div class="phead"><b>HISTORICAL BACKTEST / LONG ONLY</b><small>RESEARCH · IEX</small></div>
 <div class="pbody stack">
@@ -643,6 +659,7 @@ body{background:var(--bg)}.shell{max-width:1330px;padding-top:18px}
   <div class="auth-security"><span>SECURE SESSION</span><span>OWNER-ONLY ACCESS</span><span>NO REAL-MONEY TRADES</span></div>
  </div>
 </div>
-<script type="module" src="./app.js?v=20261028-persistent-login-v1-paper-executor-20261030-council-v1"></script>
-<script type="module" src="./opportunity.js?v=20261029-marketwide-crowd-v1-council-v1"></script>
+<script type="module" src="./app.js?v=20261028-persistent-login-v1-paper-executor-20261030-council-v1-lab-v1"></script>
+<script type="module" src="./opportunity.js?v=20261029-marketwide-crowd-v1-council-v1-lab-v1"></script>
 </body></html>
+
