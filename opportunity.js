@@ -172,6 +172,18 @@ async function refreshVirtualStrategy(){
    ' · GBP risk pause £80 · simulated virtual entries only'+
    (a.last_error?' · '+String(a.last_error).replaceAll('_',' '):'')+
    ' · NEVER Alpaca orders';
+  const councilRows=Array.isArray(payload.council)?payload.council:[];
+  const latest=councilRows[0]||null;
+  const names=latest?.vetoes?.length?latest.vetoes:latest?.unknown||[];
+  el('virtualCouncil').textContent=latest?
+   'TRADING COUNCIL · '+String(latest.verdict||'UNVERIFIED').replaceAll('_',' ')+
+   ' · '+String(latest.symbol||'—')+' · '+uk(latest.at)+
+   (names.length?' · '+names.join(', ').replaceAll('_',' '):'')+
+   ' · Goal: 1 qualified simulated trade per US session, NOT guaranteed.'+
+   ' Unverified news/edge prevents broker clearance.':
+   'TRADING COUNCIL · No new candidate has reached a recorded Council decision.'+
+   ' Goal: 1 QUALIFYING simulated trade per trading day, never forced.'+
+   ' No broker trade is approved without verified events and edge evidence.';
   const root=el('virtualPositions');root.replaceChildren();
   for(const p of rows.slice(0,8))root.append(virtualPositionCard(p));
   if(!rows.length)root.textContent='No simulated positions yet. No order has been made.';
@@ -179,6 +191,7 @@ async function refreshVirtualStrategy(){
   el('virtualState').textContent='LOCKED OR UNAVAILABLE';
   el('virtualEquity').textContent='—';el('virtualCash').textContent='—';el('virtualOpen').textContent='—';
   el('virtualMessage').textContent='A verified authorised owner session is required. No virtual results are inferred.';
+  el('virtualCouncil').textContent='Council not accessible until owner sign-in.';
   el('virtualPositions').textContent='No authenticated virtual transactions available.';
  }finally{virtualLoading=false;el('virtualRefresh').disabled=false}
 }
