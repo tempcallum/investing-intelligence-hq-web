@@ -214,6 +214,7 @@ async function refreshDesk(token){
    if(!$('view-overview').classList.contains('hidden'))await refreshDailyBrief();
    if(!$('view-overview').classList.contains('hidden'))refreshProfitProof().catch(()=>{});
    if(!$('view-overview').classList.contains('hidden'))refreshForwardRadar().catch(()=>{});
+   if(!$('view-overview').classList.contains('hidden'))refreshForcedFive().catch(()=>{});
  }catch(_){
    clearPrivateAccountUI();ownerApproved=false;
    $('authClose').classList.add('hidden');overlay(true);
@@ -1266,6 +1267,7 @@ function clearPrivateAccountUI(){
  clearStrategyLab();
  clearProfitProof();
  clearForwardRadar();
+ clearForcedFive();
  $('paperExecutorStatus').textContent='Sign in to verify paper execution status.';
  $('paperPause').disabled=true;
  $('riskEnabled').textContent='UNVERIFIED';
@@ -1898,3 +1900,109 @@ async function refreshForwardRadar(){
  }finally{if(ticket===forwardRequest)$('forwardRefresh').disabled=false;}
 }
 $('forwardRefresh')?.addEventListener('click',()=>refreshForwardRadar().catch(()=>{}));
+
+
+// Forced Top Five V1: independent read-only £100 research, no buy/sell browser controls.
+let forcedFiveRequest=0;
+const forcedFiveGbp=(value)=>{
+ if(value===null||value===undefined||value===''||!Number.isFinite(Number(value)))return 'Not valued';
+ return new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP',minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(value));
+};
+const forcedFivePct=(value)=>{
+ if(value===null||value===undefined||value===''||!Number.isFinite(Number(value)))return 'Not valued';
+ const n=Number(value);return (n>0?'+':'')+n.toFixed(2)+'%';
+};
+function clearForcedFive(){
+ forcedFiveRequest++;
+ if($('forcedFiveState'))$('forcedFiveState').textContent='Sign in to read the five-stock research experiment.';
+ for(const id of ['forcedFiveEquity','forcedFiveHits','forcedFiveOpen','forcedFiveSelected'])
+  if($(id))$(id).textContent='—';
+ if($('forcedFivePositions'))$('forcedFivePositions').replaceChildren();
+ if($('forcedFiveRefresh'))$('forcedFiveRefresh').disabled=false;
+}
+function forcedFiveLine(container,s,css='tiny'){
+ const node=document.createElement('div');node.className=css;node.textContent=String(s);
+ container.append(node);return node;
+}
+function forcedFiveCard(p){
+ const box=document.createElement('div');box.className='panel';box.style.padding='12px';
+ const row=document.createElement('div');row.style.display='flex';row.style.justifyContent='space-between';
+ row.style.flexWrap='wrap';row.style.gap='8px';
+ const title=document.createElement('b');title.textContent='#'+String(p.rank)+' · '+String(p.symbol||'—');
+ const state=document.createElement('b');
+ state.textContent=String(p.status==='TARGET_HIT'?'TARGET HIT (+0.5% NET)':
+  p.status==='OPEN'?'SIMULATED HOLD':p.status==='UNFILLED'?'NO VALID ENTRY':'WAITING FOR QUOTE');
+ row.append(title,state);box.append(row);
+ forcedFiveLine(box,'Original IIHQ: '+String(p.normal_status||'not evaluated')+
+  ' · score '+String(p.normal_score??'—')+
+  ' · '+String(p.normal_decision||'not evaluated')+
+  ' · Forced override (not broker-approved)');
+ const reasons=Array.isArray(p.normal_reasons)?p.normal_reasons:[];
+ if(reasons.length)forcedFiveLine(box,'Standard filters: '+reasons.slice(0,5).join(', '));
+ if(p.company_event_state)forcedFiveLine(box,'Company/news check: '+String(p.company_event_state));
+ const votes=p.council_evidence?.votes;
+ if(Array.isArray(votes)){
+  const vetoes=votes.filter(x=>x.status==='VETO').map(x=>x.member);
+  const unknown=votes.filter(x=>x.status==='UNKNOWN').map(x=>x.member);
+  forcedFiveLine(box,'Council diagnostic: '+(vetoes.length?vetoes.join(', '):'no veto recorded')+
+   (unknown.length?' · unknown '+unknown.join(', '):'')+' · diagnostic only');
+ }
+ if(p.entry_at){
+  const at=new Date(p.entry_at);
+  forcedFiveLine(box,'Simulated entry: '+(Number.isFinite(at.getTime())?at.toLocaleString('en-GB',
+   {timeZone:'Europe/London',dateStyle:'short',timeStyle:'short'})+' UK':'unknown time')+
+   ' · £20 allocated');
+ }else forcedFiveLine(box,'No simulated purchase yet. Selection alone is not a fill.');
+ if(p.status==='OPEN'){
+  forcedFiveLine(box,'Estimated net change: '+forcedFivePct(p.modelled_return_pct)+
+   ' · Current exit value '+forcedFiveGbp(p.estimated_exit_gbp));
+  if(p.last_quote_at)forcedFiveLine(box,'Last priced at: '+new Date(p.last_quote_at).toLocaleString('en-GB',
+   {timeZone:'Europe/London',dateStyle:'short',timeStyle:'short'})+' UK');
+ }else if(p.status==='TARGET_HIT'){
+  forcedFiveLine(box,'Simulated realised gain: '+forcedFiveGbp(p.realised_pnl_gbp)+
+   ' · Net return '+forcedFivePct(p.modelled_return_pct));
+ }
+ if(p.last_error)forcedFiveLine(box,'Monitoring note: '+String(p.last_error));
+ return box;
+}
+async function refreshForcedFive(){
+ const ticket=++forcedFiveRequest;
+ if(!ownerApproved){clearForcedFive();return;}
+ const {data:{session}}=await client.auth.getSession();
+ if(!session){clearForcedFive();return;}
+ $('forcedFiveRefresh').disabled=true;
+ $('forcedFiveState').textContent='Checking the independent research-only simulation…';
+ $('forcedFivePositions').replaceChildren();
+ try{
+  const r=await fetch(PROJECT_URL+'/functions/v1/iihq-forced-five?action=overview',{
+   method:'GET',cache:'no-store',headers:{Authorization:'Bearer '+session.access_token}});
+  if(!r.ok)throw Error('NOT_AVAILABLE');
+  const d=await r.json();
+  if(ticket!==forcedFiveRequest||!ownerApproved)return;
+  if(d.execution!=='SIMULATED_RESEARCH_ONLY'||d.broker_order_authority!==false||
+   d.alpaca_paper_orders!==0||d.real_money_orders!==0)throw Error('NOT_RESEARCH_ONLY');
+  const ps=Array.isArray(d.positions)?d.positions:[];
+  $('forcedFiveEquity').textContent=d.unrealised_unknown?'Partly unknown':forcedFiveGbp(d.estimated_total_gbp);
+  $('forcedFiveHits').textContent=String(ps.filter(p=>p.status==='TARGET_HIT').length)+'/5';
+  $('forcedFiveOpen').textContent=String(ps.filter(p=>p.status==='OPEN').length);
+  $('forcedFiveSelected').textContent=String(ps.length)+'/5';
+  $('forcedFiveState').textContent=d.state==='ARMED'?
+   'Armed for 3 November. Will select from a fresh US-market scan after 2:40 pm UK time. No positions bought yet.':
+   d.state==='SELECTION_EXPIRED'?
+    'Selection window ended without five eligible fresh research observations. No historical entry prices were invented.':
+   d.state==='COMPLETE'?
+    'All positions have reached the target or were never filled. The test has stopped making changes.':
+   'Experiment '+String(d.state||'UNKNOWN')+' · '+String(d.last_state||'Checking')+
+    '. This is modelled research, not an Alpaca paper transaction.';
+  if(!ps.length)forcedFiveLine($('forcedFivePositions'),
+   'No selections saved yet. Each opening quote must be recorded before a simulated buy.');
+  for(const p of ps) $('forcedFivePositions').append(forcedFiveCard(p));
+ }catch(_){
+  if(ticket===forcedFiveRequest&&ownerApproved){
+   $('forcedFiveState').textContent='Could not verify the five-stock experiment. This does not imply any simulated purchase or profit.';
+   $('forcedFiveEquity').textContent='—';
+   $('forcedFiveHits').textContent='—';$('forcedFiveOpen').textContent='—';$('forcedFiveSelected').textContent='—';
+  }
+ }finally{if(ticket===forcedFiveRequest)$('forcedFiveRefresh').disabled=false;}
+}
+$('forcedFiveRefresh')?.addEventListener('click',()=>refreshForcedFive().catch(()=>{}));
