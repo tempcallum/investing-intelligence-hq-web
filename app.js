@@ -1833,6 +1833,8 @@ function forwardCard(target,event){
   const estimates=Number.isInteger(event.forecast_count)?' · '+event.forecast_count+' estimates':'';
   forwardText(card,f+estimates+' · Not actual reported profit');
  }
+ if(event.radar_context?.status==='STUDY_SETUP')
+  forwardText(card,'Price Radar is currently studying this share (not a buy recommendation).');
  if(event.company_sec_context?.recent_disclosure_needs_review===true)
   forwardText(card,'SEC warning: recent company filing needs review. Event risk not cleared.');
  else if(event.event_kind==='EARNINGS')forwardText(card,'Issuer date, full news clearance and result not independently verified.');
