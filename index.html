@@ -216,6 +216,30 @@ body{background:var(--bg)}.shell{max-width:1330px;padding-top:18px}
   <div class="actions"><button id="forcedFiveRefresh" class="secondary" type="button">REFRESH FIVE-STOCK TEST</button></div>
  </div>
 </section>
+<section class="panel" id="exitResearchPanel" aria-labelledby="exitResearchHeading" style="margin:10px 0">
+ <div class="phead"><b id="exitResearchHeading">EXIT STRATEGY LAB · DAY VS OVERNIGHT</b><small>RESEARCH ONLY</small></div>
+ <div class="pbody stack">
+  <div class="info" id="exitResearchState" role="status" aria-live="polite">Sign in to review matched historical research.</div>
+  <div class="ov-stats">
+   <div class="ov-stat"><div class="ov-eyebrow">ORIGINAL RESEARCH SETUPS</div><b id="exitResearchSetups">—</b></div>
+   <div class="ov-stat"><div class="ov-eyebrow">QUOTES GOOD ENOUGH TO MODEL ENTRY</div><b id="exitResearchEligible">—</b></div>
+   <div class="ov-stat"><div class="ov-eyebrow">FULLY MATCHED EXIT COMPARISONS</div><b id="exitResearchPaired">—</b></div>
+  </div>
+  <div id="exitResearchRows" class="stack"></div>
+  <div class="tiny">Every exit option uses the <b>same shares and entry prices</b> within each matched group. An average excludes an example unless all three later quote checks are usable. Missing data is never treated as a winning or losing trade.</div>
+  <details>
+   <summary>What this comparison can and cannot prove</summary>
+   <div class="stack tiny" style="margin-top:10px">
+    <div>The research system's status at 10:24 am New York time is frozen. Simulated entry is based on the first 10:39 am quote sample, then the 11:39 am, 3:39 pm, or next market session's 10:39 am bid. No earlier timestamp uses later research information.</div>
+    <div>Only quotes with a spread of 25 basis points or less and reasonably matching, fresh IEX trades count. The model adds 0.30% friction on each side, plus spread, and keeps the GBP/USD exchange rate constant. These numbers are price approximations, not verified fills.</div>
+    <div>The first exit is a <b>60-minute sampled exit, not the exact 65-minute strategy</b>. The study cannot reconstruct what happened between 15-minute observations, 0.5% targets, stop-losses, intraday drawdowns, actual costs or overnight capital limits. Further tick/minute-level validation is required.</div>
+    <div>The AVOID category may show few or no comparisons because its quotes failed quality checks. That does not establish whether its rejected shares were winners or losers.</div>
+    <div>IIHQ's automatic strategy, historical holdout and broker permissions have not been altered by this research report.</div>
+   </div>
+  </details>
+  <div class="actions"><button id="exitResearchRefresh" class="secondary" type="button">REFRESH EXIT STRATEGY RESEARCH</button></div>
+ </div>
+</section>
 <section class="panel" id="forwardRadar" aria-labelledby="forwardHeading" style="margin:10px 0">
  <div class="phead"><b id="forwardHeading">FORWARD INTELLIGENCE · NEXT 7 DAYS</b><small>CALENDAR RESEARCH</small></div>
  <div class="pbody stack">
@@ -715,7 +739,7 @@ body{background:var(--bg)}.shell{max-width:1330px;padding-top:18px}
   <div class="auth-security"><span>SECURE SESSION</span><span>OWNER-ONLY ACCESS</span><span>NO REAL-MONEY TRADES</span></div>
  </div>
 </div>
-<script type="module" src="./app.js?v=20261028-persistent-login-v1-paper-executor-20261030-council-v1-lab-v1-proof-v1-forward-v1-forced5-v1"></script>
+<script type="module" src="./app.js?v=20261028-persistent-login-v1-paper-executor-20261030-council-v1-lab-v1-proof-v1-forward-v1-forced5-v1-exitresearch-v1"></script>
 <script type="module" src="./opportunity.js?v=20261029-marketwide-crowd-v1-council-v1-lab-v1"></script>
 </body></html>
 
