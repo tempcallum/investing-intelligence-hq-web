@@ -192,6 +192,30 @@ body{background:var(--bg)}.shell{max-width:1330px;padding-top:18px}
     <div class="tiny">Practice money only. This is a record of what the automatic system did, not a promise of profit. The report is written from saved facts, not guesses.</div>
   </div>
 </section>
+<section class="panel" id="forcedFiveResearch" style="margin:10px 0" aria-labelledby="forcedFiveHeading">
+ <div class="phead"><b id="forcedFiveHeading">FORCED TOP 5 · £100 EXPERIMENT</b><small>SIMULATED · RESEARCH ONLY</small></div>
+ <div class="pbody stack">
+  <div id="forcedFiveState" class="info" role="status" aria-live="polite">Sign in to see the independent five-stock experiment.</div>
+  <div class="ov-stats">
+   <div class="ov-stat"><div class="ov-eyebrow">SIMULATED PORTFOLIO</div><b id="forcedFiveEquity">—</b></div>
+   <div class="ov-stat"><div class="ov-eyebrow">PROFIT TARGET REACHED</div><b id="forcedFiveHits">—</b></div>
+   <div class="ov-stat"><div class="ov-eyebrow">POSITIONS OPEN</div><b id="forcedFiveOpen">—</b></div>
+   <div class="ov-stat"><div class="ov-eyebrow">TODAY'S SELECTIONS</div><b id="forcedFiveSelected">—</b></div>
+  </div>
+  <div class="tiny">3 Nov 2026 experiment. The first five ranked core shares are selected even when the usual rules say NO TRADE. Each receives a separate £20 simulated entry using a fresh market quote. Target: +0.5% estimated <b>net</b> per position (10p at £20), after modelled trading friction. If a share never reaches the target it remains open, potentially with substantial losses. Unfilled shares are never backdated.</div>
+  <div id="forcedFivePositions" class="stack"></div>
+  <details>
+   <summary>How this experiment is measured</summary>
+   <div class="stack tiny" style="margin-top:10px">
+    <div>IIHQ's normal research scores, rejection reasons, Council checks, SEC filing context and scheduled events remain recorded. Forcing a simulated entry does not mean the stock passed those checks.</div>
+    <div>Entry uses the observed IEX asking price; exit measurement uses an observed IEX buying bid. The model adds 0.30% price/FX friction on each side and holds the entry-time ECB reference exchange rate constant. This is not a verified broker fill or exact GBP profit.</div>
+    <div>Prices are sampled during the US market session. A profit target reached only between samples may be missed. Overnight price gaps and losses are not capped by a stop; unrealised positions must be included when evaluating the full experiment.</div>
+    <div>No Alpaca paper or real orders are submitted. Your normal IIHQ virtual £100 strategy and historical test rules are unchanged.</div>
+   </div>
+  </details>
+  <div class="actions"><button id="forcedFiveRefresh" class="secondary" type="button">REFRESH FIVE-STOCK TEST</button></div>
+ </div>
+</section>
 <section class="panel" id="forwardRadar" aria-labelledby="forwardHeading" style="margin:10px 0">
  <div class="phead"><b id="forwardHeading">FORWARD INTELLIGENCE · NEXT 7 DAYS</b><small>CALENDAR RESEARCH</small></div>
  <div class="pbody stack">
@@ -691,7 +715,7 @@ body{background:var(--bg)}.shell{max-width:1330px;padding-top:18px}
   <div class="auth-security"><span>SECURE SESSION</span><span>OWNER-ONLY ACCESS</span><span>NO REAL-MONEY TRADES</span></div>
  </div>
 </div>
-<script type="module" src="./app.js?v=20261028-persistent-login-v1-paper-executor-20261030-council-v1-lab-v1-proof-v1-forward-v1"></script>
+<script type="module" src="./app.js?v=20261028-persistent-login-v1-paper-executor-20261030-council-v1-lab-v1-proof-v1-forward-v1-forced5-v1"></script>
 <script type="module" src="./opportunity.js?v=20261029-marketwide-crowd-v1-council-v1-lab-v1"></script>
 </body></html>
 
