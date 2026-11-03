@@ -215,6 +215,7 @@ async function refreshDesk(token){
    if(!$('view-overview').classList.contains('hidden'))refreshProfitProof().catch(()=>{});
    if(!$('view-overview').classList.contains('hidden'))refreshForwardRadar().catch(()=>{});
    if(!$('view-overview').classList.contains('hidden'))refreshForcedFive().catch(()=>{});
+   if(!$('view-overview').classList.contains('hidden'))refreshExitResearch().catch(()=>{});
  }catch(_){
    clearPrivateAccountUI();ownerApproved=false;
    $('authClose').classList.add('hidden');overlay(true);
@@ -1268,6 +1269,7 @@ function clearPrivateAccountUI(){
  clearProfitProof();
  clearForwardRadar();
  clearForcedFive();
+ clearExitResearch();
  $('paperExecutorStatus').textContent='Sign in to verify paper execution status.';
  $('paperPause').disabled=true;
  $('riskEnabled').textContent='UNVERIFIED';
@@ -2006,3 +2008,74 @@ async function refreshForcedFive(){
  }finally{if(ticket===forcedFiveRequest)$('forcedFiveRefresh').disabled=false;}
 }
 $('forcedFiveRefresh')?.addEventListener('click',()=>refreshForcedFive().catch(()=>{}));
+
+
+// Owner-only read-only matched exit research: no trading routes or broker actions.
+let exitResearchRequest=0;
+function clearExitResearch(){
+ exitResearchRequest++;
+ for(const id of ['exitResearchSetups','exitResearchEligible','exitResearchPaired'])
+  if($(id))$(id).textContent='—';
+ if($('exitResearchRows'))$('exitResearchRows').replaceChildren();
+ if($('exitResearchState'))$('exitResearchState').textContent='Sign in to view private matched-exit research.';
+ if($('exitResearchRefresh'))$('exitResearchRefresh').disabled=false;
+}
+function exitResearchLabel(parent,text,classname='tiny'){
+ const node=document.createElement('div');node.className=classname;node.textContent=String(text);
+ parent.append(node);return node;
+}
+function exitResearchPercent(value){
+ if(value===null||value===undefined||value===''||!Number.isFinite(Number(value)))return 'Not enough matching data';
+ const n=Number(value);return (n>0?'+':'')+n.toFixed(2)+'%';
+}
+function exitResearchCard(name,group){
+ const b=document.createElement('div');b.className='panel';b.style.padding='12px';
+ const title=document.createElement('b');title.textContent=name+' · '+String(group.fully_paired_count??0)+' fully matched shares';
+ b.append(title);
+ exitResearchLabel(b,'Original selections '+String(group.asof_count??0)+
+  ' · Entries with reliable quotes '+String(group.entry_eligible_count??0));
+ exitResearchLabel(b,'One-hour sampled exit: '+exitResearchPercent(group.hour_60?.avg_net_pct_proxy));
+ exitResearchLabel(b,'Pre-close sampled exit: '+exitResearchPercent(group.preclose?.avg_net_pct_proxy));
+ exitResearchLabel(b,'Next-session sampled exit: '+exitResearchPercent(group.overnight?.avg_net_pct_proxy));
+ if((group.fully_paired_count??0)>0)
+  exitResearchLabel(b,'Next-session examples reaching +0.5% net: '+
+   String(group.overnight.net_half_percent_count)+' / '+String(group.fully_paired_count)+
+   ' · Worst next-session return '+exitResearchPercent(group.overnight.worst_net_pct_proxy));
+ else exitResearchLabel(b,'No complete, comparable prices: no valid win-rate estimate.');
+ return b;
+}
+async function refreshExitResearch(){
+ const ticket=++exitResearchRequest;
+ if(!ownerApproved){clearExitResearch();return;}
+ const {data:{session}}=await client.auth.getSession();
+ if(!session){clearExitResearch();return;}
+ $('exitResearchRefresh').disabled=true;
+ $('exitResearchState').textContent='Checking independent matched research evidence…';
+ $('exitResearchRows').replaceChildren();
+ try{
+  const response=await fetch(PROJECT_URL+'/functions/v1/iihq-exit-research?action=overview',{
+   method:'GET',cache:'no-store',headers:{Authorization:'Bearer '+session.access_token}});
+  if(!response.ok)throw Error('RESEARCH_SOURCE_UNAVAILABLE');
+  const d=await response.json();
+  if(ticket!==exitResearchRequest||!ownerApproved)return;
+  if(d.read_only!==true||d.can_promote_or_trade!==false||d.real_orders!==0||d.alpaca_paper_orders!==0)
+   throw Error('UNEXPECTED_RESEARCH_AUTHORITY');
+  $('exitResearchSetups').textContent=String(d.asof_selections??'—');
+  $('exitResearchEligible').textContent=String(d.eligible_delayed_entries??'—');
+  $('exitResearchPaired').textContent=String(d.fully_paired_total??'—');
+  const days=Array.isArray(d.observed_ny_days)?d.observed_ny_days:[];
+  $('exitResearchState').textContent='Research observations from '+String(d.earliest_day||'unknown')+
+   ' to '+String(d.latest_day||'unknown')+' · '+days.length+' US sessions. This is not proven trading profit.'+
+   (d.response_truncated?' Some older data was excluded by a response limit.':'');
+  const cohorts=d.cohorts||{};
+  for(const [key,name] of [['STUDY_SETUP','Study'],['WATCH','Watch'],['AVOID','Avoid']]){
+   if(cohorts[key])$('exitResearchRows').append(exitResearchCard(name,cohorts[key]));
+  }
+ }catch(_){
+  if(ticket===exitResearchRequest&&ownerApproved){
+   $('exitResearchState').textContent='Exit-strategy comparisons could not be verified. No profitability claim is available.';
+   for(const id of ['exitResearchSetups','exitResearchEligible','exitResearchPaired'])$(id).textContent='—';
+  }
+ }finally{if(ticket===exitResearchRequest)$('exitResearchRefresh').disabled=false;}
+}
+$('exitResearchRefresh')?.addEventListener('click',()=>refreshExitResearch().catch(()=>{}));
