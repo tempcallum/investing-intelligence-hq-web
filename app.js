@@ -213,6 +213,7 @@ async function refreshDesk(token){
    if(!$('view-overview').classList.contains('hidden'))await refreshPortfolio();
    if(!$('view-overview').classList.contains('hidden'))await refreshDailyBrief();
    if(!$('view-overview').classList.contains('hidden'))refreshProfitProof().catch(()=>{});
+   if(!$('view-overview').classList.contains('hidden'))refreshForwardRadar().catch(()=>{});
  }catch(_){
    clearPrivateAccountUI();ownerApproved=false;
    $('authClose').classList.add('hidden');overlay(true);
@@ -1264,6 +1265,7 @@ async function refreshEvidenceStudy(session){
 function clearPrivateAccountUI(){
  clearStrategyLab();
  clearProfitProof();
+ clearForwardRadar();
  $('paperExecutorStatus').textContent='Sign in to verify paper execution status.';
  $('paperPause').disabled=true;
  $('riskEnabled').textContent='UNVERIFIED';
@@ -1793,3 +1795,104 @@ async function refreshProfitProof(){
  }finally{if(ticket===proofRequest)$('proofRefresh').disabled=false;}
 }
 $('proofRefresh')?.addEventListener('click',()=>refreshProfitProof().catch(()=>{}));
+
+
+// Forward Intelligence V1: owner-only readout of already collected, source-stamped events.
+let forwardRequest=0;
+function clearForwardRadar(){
+ forwardRequest++;
+ for(const id of ['forwardPriority','forwardAll','forwardSources'])$(id)?.replaceChildren();
+ if($('forwardState'))$('forwardState').textContent='Sign in to read upcoming event research.';
+ for(const id of ['forwardTotal','forwardSoon'])if($(id))$(id).textContent='—';
+ if($('forwardRefresh'))$('forwardRefresh').disabled=false;
+}
+const forwardDate=s=>{
+ const d=new Date(String(s||'')+'T12:00:00Z');
+ return Number.isFinite(d.getTime())?d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'Date unverified';
+};
+function forwardText(parent,value,cls='tiny'){
+ const el=document.createElement('div');el.className=cls;el.textContent=String(value);parent.append(el);return el;
+}
+function forwardCard(target,event){
+ const card=document.createElement('div');card.className='panel';card.style.padding='12px';
+ const header=document.createElement('div');header.style.display='flex';header.style.flexWrap='wrap';
+ header.style.justifyContent='space-between';header.style.gap='5px';
+ const name=document.createElement('b');
+ name.textContent=String(event.symbol||'MACRO')+' · '+String(event.title||'Scheduled event');
+ const day=document.createElement('b');day.textContent=forwardDate(event.event_date);
+ header.append(name,day);card.append(header);
+ let session='Time unverified';
+ if(event.session_hint==='BEFORE_OPEN')session='Expected before US market opens';
+ if(event.session_hint==='AFTER_CLOSE')session='Expected after US market closes';
+ if(event.session_hint==='DURING_SESSION')session='Expected during US market hours';
+ forwardText(card,session+' · '+String(event.source||'Unknown source')+
+  ' · '+(event.days_ahead===0?'Today':event.days_ahead===1?'Tomorrow':'In '+event.days_ahead+' days'));
+ if(event.event_kind==='EARNINGS'){
+  const eps=event.forecast_eps_usd;
+  const f=typeof eps==='number'&&Number.isFinite(eps)?'Analyst EPS forecast $'+eps.toFixed(2):'Analyst EPS forecast unavailable';
+  const estimates=Number.isInteger(event.forecast_count)?' · '+event.forecast_count+' estimates':'';
+  forwardText(card,f+estimates+' · Not actual reported profit');
+ }
+ if(event.company_sec_context?.recent_disclosure_needs_review===true)
+  forwardText(card,'SEC warning: recent company filing needs review. Event risk not cleared.');
+ else if(event.event_kind==='EARNINGS')forwardText(card,'Issuer date, full news clearance and result not independently verified.');
+ if(typeof event.source_url==='string'){
+  try{
+   const url=new URL(event.source_url);
+   if(url.protocol==='https:'&&['www.nasdaq.com','earningsnxt.ai','fred.stlouisfed.org'].includes(url.hostname)){
+    const anchor=document.createElement('a');anchor.href=url.toString();
+    anchor.target='_blank';anchor.rel='noopener noreferrer';
+    anchor.textContent='Inspect source';anchor.style.fontSize='12px';
+    card.append(anchor);
+   }
+  }catch(_){}
+ }
+ target.append(card);
+}
+async function refreshForwardRadar(){
+ const ticket=++forwardRequest;
+ if(!ownerApproved){clearForwardRadar();return;}
+ const {data:{session}}=await client.auth.getSession();
+ if(!session){clearForwardRadar();return;}
+ $('forwardRefresh').disabled=true;
+ $('forwardState').textContent='Checking saved event-calendar evidence…';
+ for(const id of ['forwardPriority','forwardAll','forwardSources'])$(id).replaceChildren();
+ try{
+  const r=await fetch(PROJECT_URL+'/functions/v1/iihq-forward-intelligence?action=overview',{
+   method:'GET',cache:'no-store',headers:{Authorization:'Bearer '+session.access_token}});
+  if(!r.ok)throw Error('SOURCE_UNAVAILABLE');
+  const d=await r.json();
+  if(ticket!==forwardRequest||!ownerApproved)return;
+  if(d.read_only!==true||d.can_promote_to_trade!==false)throw Error('INVALID_RESEARCH_MODE');
+  const events=Array.isArray(d.events)?d.events:[];
+  $('forwardTotal').textContent=String(events.length);
+  $('forwardSoon').textContent=String(events.filter(x=>x.focus==='NEXT_48H_CALENDAR_APPROX').length);
+  const sources=Array.isArray(d.sources)?d.sources:[];
+  const good=sources.some(x=>['OK','PARTIAL','EMPTY'].includes(x.last_state));
+  const bad=sources.filter(x=>x.last_state==='UNAVAILABLE'||x.last_state==='NOT_STARTED');
+  $('forwardState').textContent=good?
+   'Calendar research updated · '+forwardDate(d.window_start)+' to '+forwardDate(d.window_end)+
+    '. Dates indicative, not trading clearance.'+
+    (bad.length?' Some sources are unavailable or have not started.':''):
+   'No verified fresh calendar coverage yet. Sources may be unavailable — not a confirmation that no events are coming.';
+  const important=events.filter(x=>x.focus==='NEXT_48H_CALENDAR_APPROX').slice(0,6);
+  if(important.length)for(const e of important)forwardCard($('forwardPriority'),e);
+  else forwardText($('forwardPriority'),
+   'No current event rows found for the next two calendar days. Check source coverage before assuming no announcements.');
+  if(events.length)for(const e of events)forwardCard($('forwardAll'),e);
+  else forwardText($('forwardAll'),'No current calendar rows. Source gaps and unsupported events may exist.');
+  for(const x of sources){
+   const checked=x.last_attempt_at?new Date(x.last_attempt_at).toLocaleString('en-GB',{timeZone:'Europe/London',
+    dateStyle:'short',timeStyle:'short'}):'Not yet checked';
+   forwardText($('forwardSources'),String(x.source)+' · '+String(x.last_state)+
+    ' · '+checked+' UK · '+String(x.rows_saved??'—')+' saved'+
+    (x.last_error?' · '+String(x.last_error):''));
+  }
+ }catch(_){
+  if(ticket===forwardRequest&&ownerApproved){
+   $('forwardState').textContent='Forward Radar could not verify the event sources. No date, forecast or order clearance can be assumed.';
+   $('forwardTotal').textContent='—';$('forwardSoon').textContent='—';
+  }
+ }finally{if(ticket===forwardRequest)$('forwardRefresh').disabled=false;}
+}
+$('forwardRefresh')?.addEventListener('click',()=>refreshForwardRadar().catch(()=>{}));
