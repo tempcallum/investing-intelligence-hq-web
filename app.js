@@ -1829,79 +1829,12 @@ function forwardCard(target,event){
   ' · '+(event.days_ahead===0?'Today':event.days_ahead===1?'Tomorrow':'In '+event.days_ahead+' days'));
  if(event.event_kind==='EARNINGS'){
   const eps=event.forecast_eps_usd;
-  const f=eps!==null&&eps!==undefined&&eps!==''&&Number.isFinite(Number(eps))?'Analyst EPS forecast 
+  const f=eps!==null&&eps!==undefined&&eps!==''&&Number.isFinite(Number(eps))?'Analyst EPS forecast $'+Number(eps).toFixed(2):'Analyst EPS forecast unavailable';
   const estimates=Number.isInteger(event.forecast_count)?' · '+event.forecast_count+' estimates':'';
   forwardText(card,f+estimates+' · Not actual reported profit');
  }
  if(event.radar_context?.status==='STUDY_SETUP')
   forwardText(card,'Price Radar is currently studying this share (not a buy recommendation).');
- if(event.company_sec_context?.recent_disclosure_needs_review===true)
-  forwardText(card,'SEC warning: recent company filing needs review. Event risk not cleared.');
- else if(event.event_kind==='EARNINGS')forwardText(card,'Issuer date, full news clearance and result not independently verified.');
- if(typeof event.source_url==='string'){
-  try{
-   const url=new URL(event.source_url);
-   if(url.protocol==='https:'&&['www.nasdaq.com','earningsnxt.ai','fred.stlouisfed.org'].includes(url.hostname)){
-    const anchor=document.createElement('a');anchor.href=url.toString();
-    anchor.target='_blank';anchor.rel='noopener noreferrer';
-    anchor.textContent='Inspect source';anchor.style.fontSize='12px';
-    card.append(anchor);
-   }
-  }catch(_){}
- }
- target.append(card);
-}
-async function refreshForwardRadar(){
- const ticket=++forwardRequest;
- if(!ownerApproved){clearForwardRadar();return;}
- const {data:{session}}=await client.auth.getSession();
- if(!session){clearForwardRadar();return;}
- $('forwardRefresh').disabled=true;
- $('forwardState').textContent='Checking saved event-calendar evidence…';
- for(const id of ['forwardPriority','forwardAll','forwardSources'])$(id).replaceChildren();
- try{
-  const r=await fetch(PROJECT_URL+'/functions/v1/iihq-forward-intelligence?action=overview',{
-   method:'GET',cache:'no-store',headers:{Authorization:'Bearer '+session.access_token}});
-  if(!r.ok)throw Error('SOURCE_UNAVAILABLE');
-  const d=await r.json();
-  if(ticket!==forwardRequest||!ownerApproved)return;
-  if(d.read_only!==true||d.can_promote_to_trade!==false)throw Error('INVALID_RESEARCH_MODE');
-  const events=Array.isArray(d.events)?d.events:[];
-  $('forwardTotal').textContent=String(events.length);
-  $('forwardSoon').textContent=String(events.filter(x=>x.focus==='NEXT_48H_CALENDAR_APPROX').length);
-  const sources=Array.isArray(d.sources)?d.sources:[];
-  const good=sources.some(x=>['OK','PARTIAL','EMPTY'].includes(x.last_state));
-  const bad=sources.filter(x=>x.last_state==='UNAVAILABLE'||x.last_state==='NOT_STARTED');
-  $('forwardState').textContent=good?
-   'Calendar research updated · '+forwardDate(d.window_start)+' to '+forwardDate(d.window_end)+
-    '. Dates indicative, not trading clearance.'+
-    (bad.length?' Some sources are unavailable or have not started.':''):
-   'No verified fresh calendar coverage yet. Sources may be unavailable — not a confirmation that no events are coming.';
-  const important=events.filter(x=>x.focus==='NEXT_48H_CALENDAR_APPROX').slice(0,6);
-  if(important.length)for(const e of important)forwardCard($('forwardPriority'),e);
-  else forwardText($('forwardPriority'),
-   'No current event rows found for the next two calendar days. Check source coverage before assuming no announcements.');
-  if(events.length)for(const e of events)forwardCard($('forwardAll'),e);
-  else forwardText($('forwardAll'),'No current calendar rows. Source gaps and unsupported events may exist.');
-  for(const x of sources){
-   const checked=x.last_attempt_at?new Date(x.last_attempt_at).toLocaleString('en-GB',{timeZone:'Europe/London',
-    dateStyle:'short',timeStyle:'short'}):'Not yet checked';
-   forwardText($('forwardSources'),String(x.source)+' · '+String(x.last_state)+
-    ' · '+checked+' UK · '+String(x.rows_saved??'—')+' saved'+
-    (x.last_error?' · '+String(x.last_error):''));
-  }
- }catch(_){
-  if(ticket===forwardRequest&&ownerApproved){
-   $('forwardState').textContent='Forward Radar could not verify the event sources. No date, forecast or order clearance can be assumed.';
-   $('forwardTotal').textContent='—';$('forwardSoon').textContent='—';
-  }
- }finally{if(ticket===forwardRequest)$('forwardRefresh').disabled=false;}
-}
-$('forwardRefresh')?.addEventListener('click',()=>refreshForwardRadar().catch(()=>{}));
-+Number(eps).toFixed(2):'Analyst EPS forecast unavailable';
-  const estimates=Number.isInteger(event.forecast_count)?' · '+event.forecast_count+' estimates':'';
-  forwardText(card,f+estimates+' · Not actual reported profit');
- }
  if(event.company_sec_context?.recent_disclosure_needs_review===true)
   forwardText(card,'SEC warning: recent company filing needs review. Event risk not cleared.');
  else if(event.event_kind==='EARNINGS')forwardText(card,'Issuer date, full news clearance and result not independently verified.');
