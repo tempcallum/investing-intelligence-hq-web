@@ -216,6 +216,27 @@ body{background:var(--bg)}.shell{max-width:1330px;padding-top:18px}
   <div class="actions"><button id="forcedFiveRefresh" class="secondary" type="button">REFRESH FIVE-STOCK TEST</button></div>
  </div>
 </section>
+<section class="panel" id="grossHistoryPanel" aria-labelledby="grossHistoryHeading" style="margin:10px 0">
+ <div class="phead"><b id="grossHistoryHeading">HISTORICAL GROSS STRATEGY TEST</b><small>ZERO EXTRA COSTS · RESEARCH ONLY</small></div>
+ <div class="pbody stack">
+  <div id="grossHistoryStatus" class="info" role="status" aria-live="polite">Sign in to view historical price-only strategy results.</div>
+  <div class="ov-stats">
+   <div class="ov-stat"><div class="ov-eyebrow">2024 DEVELOPMENT DAYS</div><b id="grossHistoryDev">—</b></div>
+   <div class="ov-stat"><div class="ov-eyebrow">2025 VALIDATION DAYS</div><b id="grossHistoryVal">—</b></div>
+  </div>
+  <div class="tiny">This comparison removes all additional modelled trading fees, slippage and per-trade currency conversion. It does <b>not</b> claim that five-minute candle prices were executable broker fills. Original as-of technical candidates are fixed before later prices are examined.</div>
+  <div id="grossHistoryOutcomes" class="stack"></div>
+  <details><summary>What counts as verified here?</summary>
+   <div class="stack tiny" style="margin-top:10px">
+    <div>The historical five-minute IEX price series and the technical selection timestamp are archived. Each tested day uses the earliest technically selected share and the <b>next</b> complete bar's opening price. Missing data or unreliable quotes cannot be called winning trades.</div>
+    <div>When a bar might hit both stop and target, the model assumes the stop occurs first. Results are price-only gross outcomes, with zero additional trading costs, and each development/validation run begins with a separate hypothetical £100 allocation.</div>
+    <div>The no-stop +0.5% strategy still exits before the market closes if the target is not reached; it is <b>not</b> a multi-day profit guarantee. Overnight gap risk and company-news approval require further testing.</div>
+    <div>Historical company filings may be obtainable today, but their full market interpretation, original forecasts and the information known at the original decision time have not been certified. Therefore this is not a fully authorised historical IIHQ trade.</div>
+   </div>
+  </details>
+  <div class="actions"><button id="grossHistoryRefresh" class="secondary" type="button">REFRESH GROSS BACKTEST</button></div>
+ </div>
+</section>
 <section class="panel" id="exitResearchPanel" aria-labelledby="exitResearchHeading" style="margin:10px 0">
  <div class="phead"><b id="exitResearchHeading">EXIT STRATEGY LAB · DAY VS OVERNIGHT</b><small>RESEARCH ONLY</small></div>
  <div class="pbody stack">
@@ -739,7 +760,7 @@ body{background:var(--bg)}.shell{max-width:1330px;padding-top:18px}
   <div class="auth-security"><span>SECURE SESSION</span><span>OWNER-ONLY ACCESS</span><span>NO REAL-MONEY TRADES</span></div>
  </div>
 </div>
-<script type="module" src="./app.js?v=20261028-persistent-login-v1-paper-executor-20261030-council-v1-lab-v1-proof-v1-forward-v1-forced5-v1-exitresearch-v1"></script>
+<script type="module" src="./app.js?v=20261028-persistent-login-v1-paper-executor-20261030-council-v1-lab-v1-proof-v1-forward-v1-forced5-v1-exitresearch-v1-grosshistory-v1"></script>
 <script type="module" src="./opportunity.js?v=20261029-marketwide-crowd-v1-council-v1-lab-v1"></script>
 </body></html>
 
