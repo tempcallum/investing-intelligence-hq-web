@@ -216,6 +216,28 @@ body{background:var(--bg)}.shell{max-width:1330px;padding-top:18px}
   <div class="actions"><button id="forcedFiveRefresh" class="secondary" type="button">REFRESH FIVE-STOCK TEST</button></div>
  </div>
 </section>
+<section class="panel" id="nextDayGrossPanel" aria-labelledby="nextDayGrossHeading" style="margin:10px 0">
+ <div class="phead"><b id="nextDayGrossHeading">OVERNIGHT STRATEGY · SELL NEXT MARKET DAY</b><small>GROSS HISTORICAL RESEARCH</small></div>
+ <div class="pbody stack">
+  <div id="nextDayGrossStatus" class="info" role="status" aria-live="polite">Sign in to view the overnight strategy comparison.</div>
+  <div class="ov-stats">
+   <div class="ov-stat"><div class="ov-eyebrow">2025 CONSERVATIVE £100 RESULT</div><b id="nextDayGrossBalance">—</b></div>
+   <div class="ov-stat"><div class="ov-eyebrow">ONE-POSITION WINNERS / LOSERS</div><b id="nextDayGrossWinLoss">—</b></div>
+   <div class="ov-stat"><div class="ov-eyebrow">2025 COMPLETED PRICE PATHS</div><b id="nextDayGrossValidated">—</b></div>
+  </div>
+  <div class="tiny">Rule: buy only the original historically selected share, keep it overnight without selling on day one, then aim for <b>+0.5% gross</b> on the following US trading day. If not reached, sell at the first candle starting 15 minutes before that day's market close — even at a loss. Zero added fees and no per-trade currency conversions.</div>
+  <div id="nextDayGrossRows" class="stack"></div>
+  <details><summary>Why the conservative result is smaller than the headline</summary>
+   <div class="stack tiny" style="margin-top:10px">
+    <div>When a share opens more than 0.5% above entry, the raw historical opening price sometimes shows a much larger gain. The conservative comparison credits only +0.5%, so it doesn't depend on capturing the entire overnight price gap.</div>
+    <div>A single £100 pot cannot fund overlapping trades. New signals are skipped if the previous position would still be open, including two 2025 cases.</div>
+    <div>Some 2024 five-minute price sequences are incomplete; no complete 2024 account balance is claimed for those dates. The 2025 backtest is based on historical dates already examined for other strategies, not a pristine unseen validation set.</div>
+    <div>Actual bid/ask spreads, broker fill quality, FX changes and company-news authorisation have not been verified. These are zero-cost IEX price-bar simulations, not broker trades, guaranteed gains or permission to place orders.</div>
+   </div>
+  </details>
+  <div class="actions"><button id="nextDayGrossRefresh" class="secondary" type="button">REFRESH OVERNIGHT RESEARCH</button></div>
+ </div>
+</section>
 <section class="panel" id="grossHistoryPanel" aria-labelledby="grossHistoryHeading" style="margin:10px 0">
  <div class="phead"><b id="grossHistoryHeading">HISTORICAL GROSS STRATEGY TEST</b><small>ZERO EXTRA COSTS · RESEARCH ONLY</small></div>
  <div class="pbody stack">
@@ -760,7 +782,7 @@ body{background:var(--bg)}.shell{max-width:1330px;padding-top:18px}
   <div class="auth-security"><span>SECURE SESSION</span><span>OWNER-ONLY ACCESS</span><span>NO REAL-MONEY TRADES</span></div>
  </div>
 </div>
-<script type="module" src="./app.js?v=20261028-persistent-login-v1-paper-executor-20261030-council-v1-lab-v1-proof-v1-forward-v1-forced5-v1-exitresearch-v1-grosshistory-v1"></script>
+<script type="module" src="./app.js?v=20261028-persistent-login-v1-paper-executor-20261030-council-v1-lab-v1-proof-v1-forward-v1-forced5-v1-exitresearch-v1-grosshistory-v1-nextday-v1"></script>
 <script type="module" src="./opportunity.js?v=20261029-marketwide-crowd-v1-council-v1-lab-v1"></script>
 </body></html>
 
