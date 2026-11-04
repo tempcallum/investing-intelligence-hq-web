@@ -216,6 +216,20 @@ body{background:var(--bg)}.shell{max-width:1330px;padding-top:18px}
   <div class="actions"><button id="forcedFiveRefresh" class="secondary" type="button">REFRESH FIVE-STOCK TEST</button></div>
  </div>
 </section>
+<section class="panel" id="cafeProxyPanel" aria-labelledby="cafeProxyHeading" style="margin:10px 0">
+ <div class="phead"><b id="cafeProxyHeading">TRADING CAFE VS IIHQ · INDICATOR RESEARCH</b><small>HISTORICAL · RESEARCH ONLY</small></div>
+ <div class="pbody stack">
+  <div id="cafeProxyState" class="info" role="status" aria-live="polite">Sign in to see the trading-pattern comparison.</div>
+  <div class="ov-stats">
+   <div class="ov-stat"><div class="ov-eyebrow">2024 PRICE-CHECKED STOCK DAYS</div><b id="cafeProxyDevDays">—</b></div>
+   <div class="ov-stat"><div class="ov-eyebrow">2025 PRICE-CHECKED STOCK DAYS</div><b id="cafeProxyValDays">—</b></div>
+  </div>
+  <div class="tiny"><b>These are our five-minute indicator analogues, NOT the school's original full trading strategies.</b> Their actual Bollinger method uses four-hour and one-hour charts; the SID method uses daily RSI/MACD and other confirmation. Prices are from IIHQ's archived selected shares. Added commission and per-trade FX costs are zero in this test.</div>
+  <div id="cafeProxyRows" class="stack"></div>
+  <div class="tiny">Original IIHQ comparison uses the same stock and date, but a different entry time. The 2025 dates were previously examined; they are not untouched validation. Five winning trades cannot establish a reliable edge. No paper or real-money orders are authorised.</div>
+  <div class="actions"><button id="cafeProxyRefresh" class="secondary" type="button">REFRESH STRATEGY COMPARISON</button></div>
+ </div>
+</section>
 <section class="panel" id="multiNightPanel" aria-labelledby="multiNightHeading" style="margin:10px 0">
  <div class="phead"><b id="multiNightHeading">MULTI-STOCK OVERNIGHT · £100 TEST</b><small>HISTORICAL · NO REAL ORDERS</small></div>
  <div class="pbody stack">
@@ -805,7 +819,7 @@ body{background:var(--bg)}.shell{max-width:1330px;padding-top:18px}
   <div class="auth-security"><span>SECURE SESSION</span><span>OWNER-ONLY ACCESS</span><span>NO REAL-MONEY TRADES</span></div>
  </div>
 </div>
-<script type="module" src="./app.js?v=20261028-persistent-login-v1-paper-executor-20261030-council-v1-lab-v1-proof-v1-forward-v1-forced5-v1-exitresearch-v1-grosshistory-v1-nextday-v1-multinight-v1"></script>
+<script type="module" src="./app.js?v=20261028-persistent-login-v1-paper-executor-20261030-council-v1-lab-v1-proof-v1-forward-v1-forced5-v1-exitresearch-v1-grosshistory-v1-nextday-v1-multinight-v1-cafeproxy-v1"></script>
 <script type="module" src="./opportunity.js?v=20261029-marketwide-crowd-v1-council-v1-lab-v1"></script>
 </body></html>
 
