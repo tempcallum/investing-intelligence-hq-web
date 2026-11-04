@@ -216,6 +216,29 @@ body{background:var(--bg)}.shell{max-width:1330px;padding-top:18px}
   <div class="actions"><button id="forcedFiveRefresh" class="secondary" type="button">REFRESH FIVE-STOCK TEST</button></div>
  </div>
 </section>
+<section class="panel" id="multiNightPanel" aria-labelledby="multiNightHeading" style="margin:10px 0">
+ <div class="phead"><b id="multiNightHeading">MULTI-STOCK OVERNIGHT · £100 TEST</b><small>HISTORICAL · NO REAL ORDERS</small></div>
+ <div class="pbody stack">
+  <div id="multiNightStatus" class="info" role="status" aria-live="polite">Sign in to see the concurrent overnight tests.</div>
+  <div class="ov-stats">
+   <div class="ov-stat"><div class="ov-eyebrow">2025 ORIGINAL STOCK SIGNALS</div><b id="multiNightSignals">—</b></div>
+   <div class="ov-stat"><div class="ov-eyebrow">2025 PRICE PATHS CHECKED</div><b id="multiNightPrices">—</b></div>
+   <div class="ov-stat"><div class="ov-eyebrow">NEW OVERNIGHT STRATEGY</div><b id="multiNightRunMode">RESEARCH</b></div>
+  </div>
+  <div class="tiny">Compare <b>2, 3 or 5 shares open simultaneously</b> from the same original £100 pot. The test selects each share's earliest as-of technical signal, never replaces it based on later returns, and keeps every purchase until the next US trading session. Next-day target +0.5% gross; otherwise, sale at the opening of the five-minute bar 15 minutes before the next session's close.</div>
+  <div id="multiNightResults" class="stack"></div>
+  <details>
+   <summary>Why more winning trades might still lose money</summary>
+   <div class="stack tiny" style="margin-top:10px">
+    <div>Each +0.5% winner makes less than an occasional −2%, −3% or worse next-day loser costs. With £100 split across five shares, one successful £20 position gains just 10p before any execution effects.</div>
+    <div><b>Fixed stakes:</b> £100 divided into £50, £33.33 or £20 per purchase. Skip a new purchase if that full amount is unavailable. <b>Adaptive stakes:</b> split current book equity by the chosen position limit, then also require enough available cash. These are different simulations, not silently interchangeable.</div>
+    <div><b>Conservative result:</b> gains at the following morning's opening are credited at a maximum +0.5%; losses are never capped. The larger uncapped price result assumes a trade at the actual historical IEX five-minute opening price and is less dependable as a broker outcome.</div>
+    <div>2024 development contains missing historical candle sequences, so a complete uninterrupted 2024 account result cannot be certified. The 2025 dates were previously examined, not a pristine new out-of-sample test.</div>
+    <div>No extra fees or currency-conversion costs are deducted as requested. Five-minute IEX prices are theoretical, and actual bid/ask spreads, real fills, overnight gaps, company-news checks and execution latency still matter. No existing virtual or broker trading rule has been changed.</div>
+  </details>
+  <div class="actions"><button id="multiNightRefresh" class="secondary" type="button">REFRESH MULTI-STOCK BACKTEST</button></div>
+ </div>
+</section>
 <section class="panel" id="nextDayGrossPanel" aria-labelledby="nextDayGrossHeading" style="margin:10px 0">
  <div class="phead"><b id="nextDayGrossHeading">OVERNIGHT STRATEGY · SELL NEXT MARKET DAY</b><small>GROSS HISTORICAL RESEARCH</small></div>
  <div class="pbody stack">
@@ -782,7 +805,7 @@ body{background:var(--bg)}.shell{max-width:1330px;padding-top:18px}
   <div class="auth-security"><span>SECURE SESSION</span><span>OWNER-ONLY ACCESS</span><span>NO REAL-MONEY TRADES</span></div>
  </div>
 </div>
-<script type="module" src="./app.js?v=20261028-persistent-login-v1-paper-executor-20261030-council-v1-lab-v1-proof-v1-forward-v1-forced5-v1-exitresearch-v1-grosshistory-v1-nextday-v1"></script>
+<script type="module" src="./app.js?v=20261028-persistent-login-v1-paper-executor-20261030-council-v1-lab-v1-proof-v1-forward-v1-forced5-v1-exitresearch-v1-grosshistory-v1-nextday-v1-multinight-v1"></script>
 <script type="module" src="./opportunity.js?v=20261029-marketwide-crowd-v1-council-v1-lab-v1"></script>
 </body></html>
 
