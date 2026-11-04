@@ -218,6 +218,7 @@ async function refreshDesk(token){
    if(!$('view-overview').classList.contains('hidden'))refreshExitResearch().catch(()=>{});
    if(!$('view-overview').classList.contains('hidden'))refreshGrossHistory().catch(()=>{});
    if(!$('view-overview').classList.contains('hidden'))refreshNextDayGross().catch(()=>{});
+   if(!$('view-overview').classList.contains('hidden'))refreshMultiNight().catch(()=>{});
  }catch(_){
    clearPrivateAccountUI();ownerApproved=false;
    $('authClose').classList.add('hidden');overlay(true);
@@ -1274,6 +1275,7 @@ function clearPrivateAccountUI(){
  clearExitResearch();
  clearGrossHistory();
  clearNextDayGross();
+ clearMultiNight();
  $('paperExecutorStatus').textContent='Sign in to verify paper execution status.';
  $('paperPause').disabled=true;
  $('riskEnabled').textContent='UNVERIFIED';
@@ -2246,3 +2248,86 @@ async function refreshNextDayGross(){
  }finally{if(ticket===nextDayGrossTicket)$('nextDayGrossRefresh').disabled=false;}
 }
 $('nextDayGrossRefresh')?.addEventListener('click',()=>refreshNextDayGross().catch(()=>{}));
+
+
+// Private historical-only two/three/five overnight trade portfolios. No order routes.
+let multiNightTicket=0;
+function clearMultiNight(){
+ multiNightTicket++;
+ if($('multiNightStatus'))$('multiNightStatus').textContent='Sign in to review the private multi-stock backtest.';
+ if($('multiNightSignals'))$('multiNightSignals').textContent='—';
+ if($('multiNightPrices'))$('multiNightPrices').textContent='—';
+ if($('multiNightRunMode'))$('multiNightRunMode').textContent='RESEARCH';
+ if($('multiNightResults'))$('multiNightResults').replaceChildren();
+ if($('multiNightRefresh'))$('multiNightRefresh').disabled=false;
+}
+function multiNightText(parent,t){
+ const e=document.createElement('div');e.className='tiny';e.textContent=String(t);parent.append(e);return e;
+}
+function multiNightGbp(v){
+ if(v===null||v===undefined||!Number.isFinite(Number(v)))return 'Unverifiable';
+ return new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP',minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(v));
+}
+function multiNightCard(n,fixed,adaptive){
+ const node=document.createElement('div');node.className='panel';node.style.padding='12px';
+ const h=document.createElement('b');h.textContent=n+' SIMULTANEOUS SHARES · '+multiNightGbp(100/n)+' STARTING STAKE';node.append(h);
+ multiNightText(node,'Fixed-stake, opening-gap capped £100 result: '+
+  multiNightGbp(fixed.gap_capped_result_gbp));
+ multiNightText(node,'Funded trades '+String(fixed.bought)+
+  ' · winning '+String(fixed.winners)+' · losing '+String(fixed.losers)+
+  ' · cash-blocked '+String(fixed.cash_skipped)+
+  ' · overlap-blocked '+String(fixed.overlap_skipped));
+ multiNightText(node,'Adaptive-size, opening-gap capped £100 result: '+
+  multiNightGbp(adaptive.capped_ending_gbp));
+ multiNightText(node,'Adaptive trades '+String(adaptive.trades)+
+  ' · winning '+String(adaptive.wins)+' · losing '+String(adaptive.losses));
+ multiNightText(node,'Uncapped gap-price scenario (adaptive): '+
+  multiNightGbp(adaptive.uncapped_ending_gbp)+
+  ' · theoretical opening fills, not verified broker profits');
+ if(!fixed.result_is_complete||!adaptive.complete)
+  multiNightText(node,'Some positions have missing outcome data. This is NOT a complete portfolio result.');
+ return node;
+}
+async function refreshMultiNight(){
+ const ticket=++multiNightTicket;
+ if(!ownerApproved){clearMultiNight();return;}
+ const {data:{session}}=await client.auth.getSession();
+ if(!session){clearMultiNight();return;}
+ $('multiNightRefresh').disabled=true;
+ $('multiNightStatus').textContent='Checking the private two-, three- and five-share overnight comparisons…';
+ $('multiNightResults').replaceChildren();
+ try{
+  const r=await fetch(PROJECT_URL+'/functions/v1/iihq-overnight-multi?action=overview',{
+   method:'GET',cache:'no-store',headers:{Authorization:'Bearer '+session.access_token}});
+  if(!r.ok)throw Error('PRIVATE_RESEARCH_UNAVAILABLE');
+  const d=await r.json();
+  if(ticket!==multiNightTicket||!ownerApproved)return;
+  if(d.read_only!==true||d.broker_order_authority!==false||
+    d.real_orders!==0||d.paper_orders!==0||d.zero_costs!==true||
+    d.fee_bps!==0||d.fx_conversion_per_trade!==0)
+   throw Error('RESEARCH_MODE_MISMATCH');
+  const v=d.splits?.validation,a=d.adaptive_sensitivity?.validation,
+   dv=d.splits?.development;
+  if(!v||!a||!dv)throw Error('NO_HISTORICAL_GROUPS');
+  $('multiNightSignals').textContent=String(v.selected_technical_candidates??0);
+  $('multiNightPrices').textContent=String(v.complete_next_session_prices??0);
+  $('multiNightRunMode').textContent='NO ORDERS';
+  $('multiNightStatus').textContent='2025: '+String(v.historical_sessions||0)+
+   ' prior research sessions. 2024: '+String(dv.historical_sessions||0)+
+   ' development sessions. This tests gross price changes, not a verified trading strategy.';
+  for(const n of ['2','3','5']){
+   if(v.variants?.[n]&&a[n])
+    $('multiNightResults').append(multiNightCard(n,v.variants[n],a[n]));
+  }
+  multiNightText($('multiNightResults'),
+   '2024 development: '+String(dv.selected_technical_candidates||0)+
+   ' original technical signals, '+String(dv.complete_next_session_prices||0)+
+   ' complete next-session price paths. Incomplete price records prevent a full-account conclusion.');
+ }catch(_){
+  if(ticket===multiNightTicket&&ownerApproved){
+   $('multiNightStatus').textContent='Unable to verify the private multi-position backtest. No trading-profit claim is available.';
+   $('multiNightSignals').textContent='—';$('multiNightPrices').textContent='—';
+  }
+ }finally{if(ticket===multiNightTicket)$('multiNightRefresh').disabled=false;}
+}
+$('multiNightRefresh')?.addEventListener('click',()=>refreshMultiNight().catch(()=>{}));
