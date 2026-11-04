@@ -217,6 +217,7 @@ async function refreshDesk(token){
    if(!$('view-overview').classList.contains('hidden'))refreshForcedFive().catch(()=>{});
    if(!$('view-overview').classList.contains('hidden'))refreshExitResearch().catch(()=>{});
    if(!$('view-overview').classList.contains('hidden'))refreshGrossHistory().catch(()=>{});
+   if(!$('view-overview').classList.contains('hidden'))refreshNextDayGross().catch(()=>{});
  }catch(_){
    clearPrivateAccountUI();ownerApproved=false;
    $('authClose').classList.add('hidden');overlay(true);
@@ -1272,6 +1273,7 @@ function clearPrivateAccountUI(){
  clearForcedFive();
  clearExitResearch();
  clearGrossHistory();
+ clearNextDayGross();
  $('paperExecutorStatus').textContent='Sign in to verify paper execution status.';
  $('paperPause').disabled=true;
  $('riskEnabled').textContent='UNVERIFIED';
@@ -2154,3 +2156,93 @@ async function refreshGrossHistory(){
  }finally{if(ticket===grossHistoryRequest)$('grossHistoryRefresh').disabled=false;}
 }
 $('grossHistoryRefresh')?.addEventListener('click',()=>refreshGrossHistory().catch(()=>{}));
+
+
+// Overnight historical strategy report: read-only, zero added costs, no order controls.
+let nextDayGrossTicket=0;
+function clearNextDayGross(){
+ nextDayGrossTicket++;
+ if($('nextDayGrossStatus'))$('nextDayGrossStatus').textContent='Sign in to see the private overnight research.';
+ for(const id of ['nextDayGrossBalance','nextDayGrossWinLoss','nextDayGrossValidated'])
+  if($(id))$(id).textContent='—';
+ if($('nextDayGrossRows'))$('nextDayGrossRows').replaceChildren();
+ if($('nextDayGrossRefresh'))$('nextDayGrossRefresh').disabled=false;
+}
+function nextDayGrossLine(parent,s){
+ const v=document.createElement('div');v.className='tiny';v.textContent=String(s);parent.append(v);return v;
+}
+function nextDayGrossMoney(n){
+ if(n===null||n===undefined||!Number.isFinite(Number(n)))return 'Not verified';
+ return new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP',
+  minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(n));
+}
+function nextDayGrossPercent(n){
+ if(n===null||n===undefined||!Number.isFinite(Number(n)))return 'Not verified';
+ const v=Number(n);return (v>0?'+':'')+v.toFixed(2)+'%';
+}
+function nextDayGrossSplit(title,group,account){
+ const pane=document.createElement('div');pane.className='panel';pane.style.padding='12px';
+ const h=document.createElement('b');h.textContent=title;pane.append(h);
+ nextDayGrossLine(pane,'Sessions studied '+String(group.tested_sessions||0)+
+  ' · Complete next-day exits '+String(group.completed||0)+
+  ' · '+String(group.wins||0)+' gains and '+String(group.losses||0)+' losses');
+ nextDayGrossLine(pane,'+0.5% exits '+String(group.target_hit||0)+
+  ' · Sold before the next close '+String(group.forced_preclose||0));
+ nextDayGrossLine(pane,'Raw average gross return per complete position '+
+  nextDayGrossPercent(group.avg_gross_pct)+
+  ' (includes full overnight opening gaps)');
+ nextDayGrossLine(pane,'Single £100 account: '+String(account.completed_purchases||0)+
+  ' purchases · '+String(account.overlapping_signals_skipped||0)+
+  ' overlapping signals skipped');
+ nextDayGrossLine(pane,'Conservative £100 result, opening-gap profits capped at +0.5%: '+
+  nextDayGrossMoney(account.conservative_gap_capped_equity_per_100_no_fee));
+ if(account.data_unverifiable_days)
+  nextDayGrossLine(pane,String(account.data_unverifiable_days)+
+   ' unresolved price paths: the complete £100 balance cannot be verified.');
+ nextDayGrossLine(pane,'Worst observed price dip during a held position: '+
+  nextDayGrossPercent(group.worst_observed_adverse_pct)+
+  ' (five-minute candles, not continuous ticks)');
+ return pane;
+}
+async function refreshNextDayGross(){
+ const ticket=++nextDayGrossTicket;
+ if(!ownerApproved){clearNextDayGross();return;}
+ const {data:{session}}=await client.auth.getSession();
+ if(!session){clearNextDayGross();return;}
+ $('nextDayGrossRefresh').disabled=true;
+ $('nextDayGrossStatus').textContent='Checking archived following-day market prices…';
+ $('nextDayGrossRows').replaceChildren();
+ try{
+  const r=await fetch(PROJECT_URL+'/functions/v1/iihq-next-day-gross?action=overview',{
+   method:'GET',cache:'no-store',headers:{Authorization:'Bearer '+session.access_token}});
+  if(!r.ok)throw Error('SOURCE_NOT_AVAILABLE');
+  const d=await r.json();
+  if(ticket!==nextDayGrossTicket||!ownerApproved)return;
+  if(d.research_only!==true||d.broker_order_authority!==false||
+   d.real_orders!==0||d.paper_orders!==0||d.fee_bps!==0||d.fx_per_order!==0)
+   throw Error('RESEARCH_MODE_NOT_VERIFIED');
+  const validation=d.splits?.validation,development=d.splits?.development;
+  const accounts=d.one_position_account;
+  if(!validation||!development||!accounts?.validation||!accounts?.development)
+   throw Error('RESEARCH_SUMMARY_MISSING');
+  const val=accounts.validation;
+  $('nextDayGrossBalance').textContent=nextDayGrossMoney(
+   val.conservative_gap_capped_equity_per_100_no_fee);
+  $('nextDayGrossWinLoss').textContent=String(val.winners)+' / '+String(val.losses);
+  $('nextDayGrossValidated').textContent=String(validation.completed)+' / '+
+   String(validation.tested_sessions);
+  $('nextDayGrossRows').append(
+   nextDayGrossSplit('2025 · Earlier validation dates',validation,val),
+   nextDayGrossSplit('2024 · Development dates',development,accounts.development));
+  $('nextDayGrossStatus').textContent=String(d.days_total)+
+   ' historical sessions analysed. This is gross, price-only research, not proof of an executable or profitable broker strategy.'+
+   (d.days_total<40?' Six previously queued 2025 sessions may still be outstanding.':'');
+ }catch(_){
+  if(ticket===nextDayGrossTicket&&ownerApproved){
+   $('nextDayGrossStatus').textContent='Unable to verify the overnight price analysis. No profitable-trading claim is available.';
+   for(const id of ['nextDayGrossBalance','nextDayGrossWinLoss','nextDayGrossValidated'])
+    $(id).textContent='—';
+  }
+ }finally{if(ticket===nextDayGrossTicket)$('nextDayGrossRefresh').disabled=false;}
+}
+$('nextDayGrossRefresh')?.addEventListener('click',()=>refreshNextDayGross().catch(()=>{}));
