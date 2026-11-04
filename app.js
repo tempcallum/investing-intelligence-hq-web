@@ -219,6 +219,7 @@ async function refreshDesk(token){
    if(!$('view-overview').classList.contains('hidden'))refreshGrossHistory().catch(()=>{});
    if(!$('view-overview').classList.contains('hidden'))refreshNextDayGross().catch(()=>{});
    if(!$('view-overview').classList.contains('hidden'))refreshMultiNight().catch(()=>{});
+   if(!$('view-overview').classList.contains('hidden'))refreshCafeProxy().catch(()=>{});
  }catch(_){
    clearPrivateAccountUI();ownerApproved=false;
    $('authClose').classList.add('hidden');overlay(true);
@@ -1276,6 +1277,7 @@ function clearPrivateAccountUI(){
  clearGrossHistory();
  clearNextDayGross();
  clearMultiNight();
+ clearCafeProxy();
  $('paperExecutorStatus').textContent='Sign in to verify paper execution status.';
  $('paperPause').disabled=true;
  $('riskEnabled').textContent='UNVERIFIED';
@@ -2331,3 +2333,80 @@ async function refreshMultiNight(){
  }finally{if(ticket===multiNightTicket)$('multiNightRefresh').disabled=false;}
 }
 $('multiNightRefresh')?.addEventListener('click',()=>refreshMultiNight().catch(()=>{}));
+
+
+// Trading Cafe-inspired indicator analogues: private read-only research, no trade controls.
+let cafeProxyTicket=0;
+function clearCafeProxy(){
+ cafeProxyTicket++;
+ if($('cafeProxyState'))$('cafeProxyState').textContent='Sign in to see the Trading Cafe indicator research.';
+ if($('cafeProxyDevDays'))$('cafeProxyDevDays').textContent='—';
+ if($('cafeProxyValDays'))$('cafeProxyValDays').textContent='—';
+ if($('cafeProxyRows'))$('cafeProxyRows').replaceChildren();
+ if($('cafeProxyRefresh'))$('cafeProxyRefresh').disabled=false;
+}
+function cafeProxyLine(parent,value){
+ const node=document.createElement('div');node.className='tiny';node.textContent=String(value);
+ parent.append(node);return node;
+}
+function cafeProxyPct(value){
+ if(value===null||value===undefined||!Number.isFinite(Number(value)))return 'No qualifying trades';
+ const n=Number(value);return (n>0?'+':'')+n.toFixed(2)+'%';
+}
+function cafeProxyMoney(value){
+ if(value===null||value===undefined||!Number.isFinite(Number(value)))return 'N/A';
+ return new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP',
+  minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(value));
+}
+function cafeProxyCard(name,id,d,v){
+ const card=document.createElement('div');card.className='panel';card.style.padding='12px';
+ const title=document.createElement('b');title.textContent=name;card.append(title);
+ for(const [label,x] of [['2024 development',d],['2025 previously reviewed',v]]){
+  const data=x?.variants?.[id]?.original_65m;
+  if(!data)continue;
+  cafeProxyLine(card,label+' · '+String(data.complete_exits??0)+' trades · '+
+   String(data.wins??0)+' winners / '+String(data.losses??0)+' losers · '+
+   'average '+cafeProxyPct(data.avg_gross_pct)+' · hypothetical £100 '+
+   cafeProxyMoney(data.equity_100_on_signals));
+ }
+ const alt=v?.variants?.[id]?.small_target_65m;
+ if(alt?.complete_exits) cafeProxyLine(card,'2025 with +0.5% target instead: '+
+  cafeProxyPct(alt.avg_gross_pct)+' average · hypothetical £100 '+
+  cafeProxyMoney(alt.equity_100_on_signals));
+ return card;
+}
+async function refreshCafeProxy(){
+ const ticket=++cafeProxyTicket;
+ if(!ownerApproved){clearCafeProxy();return;}
+ const {data:{session}}=await client.auth.getSession();
+ if(!session){clearCafeProxy();return;}
+ $('cafeProxyRefresh').disabled=true;
+ $('cafeProxyState').textContent='Checking archived indicator rules and market prices…';
+ $('cafeProxyRows').replaceChildren();
+ try{
+  const r=await fetch(PROJECT_URL+'/functions/v1/iihq-cafe-proxy-audit?action=overview',{
+   method:'GET',cache:'no-store',headers:{Authorization:'Bearer '+session.access_token}});
+  if(!r.ok)throw Error('PRIVATE_RESEARCH_UNAVAILABLE');
+  const data=await r.json();
+  if(ticket!==cafeProxyTicket||!ownerApproved)return;
+  if(data.read_only!==true||data.verified_provider_strategy!==false||
+   data.broker_authority!==false||data.real_orders!==0||data.paper_orders!==0)
+   throw Error('RESEARCH_PERMISSIONS_NOT_VERIFIED');
+  const dev=data.splits?.development,val=data.splits?.validation;
+  if(!dev||!val)throw Error('HISTORICAL_SPLITS_MISSING');
+  $('cafeProxyDevDays').textContent=String(dev.underlying_iihq_symbol_days||0);
+  $('cafeProxyValDays').textContent=String(val.underlying_iihq_symbol_days||0);
+  $('cafeProxyState').textContent='Historical comparison complete. The proxy rules are NOT verified replicas of the provider’s strategies.';
+  for(const [name,id] of [['Bollinger lower-band rebound','bollinger_reentry_5m'],
+   ['W-bottom breakout','double_bottom_5m'],['RSI + MACD cross (SID-like only)','sid_rsi_macd_5m']])
+   $('cafeProxyRows').append(cafeProxyCard(name,id,dev,val));
+  cafeProxyLine($('cafeProxyRows'),
+   'Caution: the 2025 W-bottom result depends heavily on GME. Removing both GME trades leaves the other three averaging roughly −0.39% gross.');
+ }catch(_){
+  if(ticket===cafeProxyTicket&&ownerApproved){
+   $('cafeProxyState').textContent='Could not verify historical indicator comparisons. No proven strategy claim is available.';
+   $('cafeProxyDevDays').textContent='—';$('cafeProxyValDays').textContent='—';
+  }
+ }finally{if(ticket===cafeProxyTicket)$('cafeProxyRefresh').disabled=false;}
+}
+$('cafeProxyRefresh')?.addEventListener('click',()=>refreshCafeProxy().catch(()=>{}));
