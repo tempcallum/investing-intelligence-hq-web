@@ -216,6 +216,7 @@ async function refreshDesk(token){
    if(!$('view-overview').classList.contains('hidden'))refreshForwardRadar().catch(()=>{});
    if(!$('view-overview').classList.contains('hidden'))refreshForcedFive().catch(()=>{});
    if(!$('view-overview').classList.contains('hidden'))refreshExitResearch().catch(()=>{});
+   if(!$('view-overview').classList.contains('hidden'))refreshGrossHistory().catch(()=>{});
  }catch(_){
    clearPrivateAccountUI();ownerApproved=false;
    $('authClose').classList.add('hidden');overlay(true);
@@ -1270,6 +1271,7 @@ function clearPrivateAccountUI(){
  clearForwardRadar();
  clearForcedFive();
  clearExitResearch();
+ clearGrossHistory();
  $('paperExecutorStatus').textContent='Sign in to verify paper execution status.';
  $('paperPause').disabled=true;
  $('riskEnabled').textContent='UNVERIFIED';
@@ -2079,3 +2081,76 @@ async function refreshExitResearch(){
  }finally{if(ticket===exitResearchRequest)$('exitResearchRefresh').disabled=false;}
 }
 $('exitResearchRefresh')?.addEventListener('click',()=>refreshExitResearch().catch(()=>{}));
+
+
+// Historical gross strategy test V1: zero added fees, owner-only readout, no order authority.
+let grossHistoryRequest=0;
+function clearGrossHistory(){
+ grossHistoryRequest++;
+ if($('grossHistoryStatus'))$('grossHistoryStatus').textContent='Sign in to view private historical research.';
+ for(const id of ['grossHistoryDev','grossHistoryVal'])if($(id))$(id).textContent='—';
+ if($('grossHistoryOutcomes'))$('grossHistoryOutcomes').replaceChildren();
+ if($('grossHistoryRefresh'))$('grossHistoryRefresh').disabled=false;
+}
+function grossHistoryText(parent,value,cls='tiny'){
+ const node=document.createElement('div');node.className=cls;node.textContent=String(value);parent.append(node);return node;
+}
+function grossPercent(value){
+ if(value===null||value===undefined||value===''||!Number.isFinite(Number(value)))return 'No qualifying price path';
+ const n=Number(value);return (n>0?'+':'')+n.toFixed(2)+'%';
+}
+function grossHistorySplit(title,data,rules){
+ const card=document.createElement('div');card.className='panel';card.style.padding='12px';
+ const head=document.createElement('b');head.textContent=title;card.append(head);
+ grossHistoryText(card,String(data.tested_session_count??0)+' completed research sessions · '+
+  String(data.no_selection??0)+' no technical picks · '+
+  String(data.unusable_entry??0)+' unusable entries.');
+ for(const rule of rules){
+  const stat=data.rules?.[rule.id];
+  if(!stat)continue;
+  const line=document.createElement('div');line.style.marginTop='9px';
+  const bold=document.createElement('b');bold.textContent=rule.name;line.append(bold);card.append(line);
+  grossHistoryText(card,'Gross average '+grossPercent(stat.mean_gross_pct)+
+   ' · '+String(stat.wins)+' winners / '+String(stat.completed_days)+' completed price paths');
+  grossHistoryText(card,'Hypothetical £100 closing value '+(
+   stat.terminal_gross_equity_per_100===null?'Not available':
+   new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP'}).format(stat.terminal_gross_equity_per_100))+
+   ' · Worst price return '+grossPercent(stat.worst_single_trade_pct));
+ }
+ return card;
+}
+async function refreshGrossHistory(){
+ const ticket=++grossHistoryRequest;
+ if(!ownerApproved){clearGrossHistory();return;}
+ const {data:{session}}=await client.auth.getSession();
+ if(!session){clearGrossHistory();return;}
+ $('grossHistoryRefresh').disabled=true;
+ $('grossHistoryStatus').textContent='Checking historical market-price records…';
+ $('grossHistoryOutcomes').replaceChildren();
+ try{
+  const r=await fetch(PROJECT_URL+'/functions/v1/iihq-gross-history?action=overview',{
+   method:'GET',cache:'no-store',headers:{Authorization:'Bearer '+session.access_token}});
+  if(!r.ok)throw Error('NOT_AVAILABLE');
+  const d=await r.json();
+  if(ticket!==grossHistoryRequest||!ownerApproved)return;
+  if(d.read_only!==true||d.broker_order_authority!==false||d.real_orders!==0||
+   d.paper_orders!==0||d.side_bps_added!==0||d.fx_conversion_per_order!==0)
+   throw Error('UNEXPECTED_GROSS_RESEARCH_AUTHORITY');
+  const dev=d.splits?.development,val=d.splits?.validation;
+  if(!dev||!val)throw Error('INVALID_SPLITS');
+  $('grossHistoryDev').textContent=String(dev.tested_session_count??0);
+  $('grossHistoryVal').textContent=String(val.tested_session_count??0);
+  const rules=Array.isArray(d.rules)?d.rules:[];
+  $('grossHistoryOutcomes').append(grossHistorySplit('Development · 2024',dev,rules),
+   grossHistorySplit('Validation · 2025',val,rules));
+  $('grossHistoryStatus').textContent='Completed '+String(d.days_total||0)+
+   ' archived US sessions. Zero added costs. This is a candle-price research test, NOT certified brokerage profitability.'+
+   (d.days_total<40?' Further prepared validation days have not yet completed.':'');
+ }catch(_){
+  if(ticket===grossHistoryRequest&&ownerApproved){
+   $('grossHistoryStatus').textContent='Gross historical results could not be verified. No winning-strategy claim is available.';
+   $('grossHistoryDev').textContent='—';$('grossHistoryVal').textContent='—';
+  }
+ }finally{if(ticket===grossHistoryRequest)$('grossHistoryRefresh').disabled=false;}
+}
+$('grossHistoryRefresh')?.addEventListener('click',()=>refreshGrossHistory().catch(()=>{}));
