@@ -188,6 +188,16 @@ async function refreshVirtualStrategy(){
   };
   const reviewDay=nyDay(latest?.at);
   const filledSameDay=reviewDay?rows.find(p=>nyDay(p.entry_at)===reviewDay):null;
+  const measuredReviews=councilRows.filter(x=>x.research_followup?.state==='MEASURED'&&
+   x.research_followup.pct!==null&&x.research_followup.pct!==undefined&&
+   Number.isFinite(Number(x.research_followup.pct)));
+  const risingReviews=measuredReviews.filter(x=>Number(x.research_followup.pct)>0).length;
+  const fallingReviews=measuredReviews.filter(x=>Number(x.research_followup.pct)<0).length;
+  const oneHourSummary=payload.council_followup_source==='OBSERVED_RESEARCH_ONLY'?
+   ' · Last '+String(councilRows.length)+' reviews: '+measuredReviews.length+
+   ' measured about one hour later ('+risingReviews+' rose, '+fallingReviews+
+   ' fell). Repeat reviews count separately; these are PRICE FOLLOWUPS, not trade profits.':
+   ' · One-hour review-price followups are not verified in this view.';
   const decision=latest?.vetoes?.length?'REVIEW COMPLETED — RISK VETO':
    latest?.verdict==='CONDITIONAL_RESEARCH_ONLY'?
     'REVIEW COMPLETED — ELIGIBLE FOR VIRTUAL RESEARCH; BROKER NOT APPROVED':
@@ -200,6 +210,7 @@ async function refreshVirtualStrategy(){
     String(filledSameDay.symbol||'a previous share')+'. Later reviews are research only.':
     ' · Virtual model permits a maximum of ONE new funded purchase per US trading day.')+
    ' · The review is saved history, NOT a pending company-record task.'+
+   oneHourSummary+
    ' · Company/news unknown and unproven strategy performance prevent BROKER approval.':
    'TRADING COUNCIL · No recorded review in the latest fetched history. '+
    'The virtual model can make at most one new purchase per US trading day.'+
