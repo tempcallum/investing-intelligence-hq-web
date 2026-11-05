@@ -172,18 +172,38 @@ async function refreshVirtualStrategy(){
    ' · GBP risk pause £80 · simulated virtual entries only'+
    (a.last_error?' · '+String(a.last_error).replaceAll('_',' '):'')+
    ' · NEVER Alpaca orders';
+  // Council entries are finished reviews, not a queue awaiting company filings.
+  // Unknown earnings/news or positive-edge evidence prevents BROKER permission,
+  // but does not veto the separate simulator. One new funded virtual entry per
+  // New York session is enforced independently by the database open function.
   const councilRows=Array.isArray(payload.council)?payload.council:[];
   const latest=councilRows[0]||null;
   const names=latest?.vetoes?.length?latest.vetoes:latest?.unknown||[];
+  const nyDay=stamp=>{
+   if(!stamp||!Number.isFinite(Date.parse(stamp)))return null;
+   const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'America/New_York',
+    year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(stamp));
+   const value=key=>parts.find(x=>x.type===key)?.value||'';
+   return value('year')+'-'+value('month')+'-'+value('day');
+  };
+  const reviewDay=nyDay(latest?.at);
+  const filledSameDay=reviewDay?rows.find(p=>nyDay(p.entry_at)===reviewDay):null;
+  const decision=latest?.vetoes?.length?'REVIEW COMPLETED — RISK VETO':
+   latest?.verdict==='CONDITIONAL_RESEARCH_ONLY'?
+    'REVIEW COMPLETED — ELIGIBLE FOR VIRTUAL RESEARCH; BROKER NOT APPROVED':
+   latest?'REVIEW COMPLETED — '+String(latest.verdict||'UNVERIFIED').replaceAll('_',' '):null;
   el('virtualCouncil').textContent=latest?
-   'TRADING COUNCIL · '+String(latest.verdict||'UNVERIFIED').replaceAll('_',' ')+
+   'TRADING COUNCIL · '+decision+
    ' · '+String(latest.symbol||'—')+' · '+uk(latest.at)+
-   (names.length?' · '+names.join(', ').replaceAll('_',' '):'')+
-   ' · Goal: 1 qualified simulated trade per US session, NOT guaranteed.'+
-   ' Unverified news/edge prevents broker clearance.':
-   'TRADING COUNCIL · No new candidate has reached a recorded Council decision.'+
-   ' Goal: 1 QUALIFYING simulated trade per trading day, never forced.'+
-   ' No broker trade is approved without verified events and edge evidence.';
+   (names.length?' · unresolved checks: '+names.join(', ').replaceAll('_',' '):'')+
+   (filledSameDay?' · Funded virtual daily purchase limit already used by '+
+    String(filledSameDay.symbol||'a previous share')+'. Later reviews are research only.':
+    ' · Virtual model permits a maximum of ONE new funded purchase per US trading day.')+
+   ' · The review is saved history, NOT a pending company-record task.'+
+   ' · Company/news unknown and unproven strategy performance prevent BROKER approval.':
+   'TRADING COUNCIL · No recorded review in the latest fetched history. '+
+   'The virtual model can make at most one new purchase per US trading day.'+
+   ' Broker approval requires separate company/event and profitability evidence.';
   const root=el('virtualPositions');root.replaceChildren();
   for(const p of rows.slice(0,8))root.append(virtualPositionCard(p));
   if(!rows.length)root.textContent='No simulated positions yet. No order has been made.';
