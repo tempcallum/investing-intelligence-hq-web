@@ -215,6 +215,59 @@ async function refreshVirtualStrategy(){
    'TRADING COUNCIL · No recorded review in the latest fetched history. '+
    'The virtual model can make at most one new purchase per US trading day.'+
    ' Broker approval requires separate company/event and profitability evidence.';
+  // Independent Council shadow entries are NOT the funded virtual account.
+  // Each £100 observation may overlap others; never compound these as one ledger.
+  const shadow=payload.shadow_research||{};
+  const shadowRows=Array.isArray(shadow.positions)?shadow.positions:[];
+  const shadowDecisions=Array.isArray(shadow.decisions)?shadow.decisions:[];
+  const completedShadow=shadowRows.filter(x=>x.status==='CLOSED');
+  const shadowWins=completedShadow.filter(x=>Number(x.realised_gbp)>0).length;
+  const shadowLosses=completedShadow.filter(x=>Number(x.realised_gbp)<0).length;
+  const shadowSkipped=shadowDecisions.filter(x=>x.outcome!=='SHADOW_OPENED');
+  el('virtualShadowSummary').textContent=
+   'Research-only, independent £100 per Council setup · LAST '+String(shadowRows.length)+
+   ' recorded shadow positions: '+String(shadowRows.filter(x=>x.status==='OPEN').length)+
+   ' open, '+String(completedShadow.length)+' closed ('+
+   String(shadowWins)+' wins, '+String(shadowLosses)+' losses). '+
+   'Recorded skips in latest '+String(shadowDecisions.length)+' reviews: '+
+   String(shadowSkipped.length)+
+   '. These are overlapping independent studies, NOT a combined funded portfolio.';
+  const shadowBox=el('virtualShadowPositions');shadowBox.replaceChildren();
+  for(const p of shadowRows.slice(0,8)){
+   const item=document.createElement('div');item.className='locked tiny';
+   const ending=p.status==='CLOSED'?
+    ' · CLOSED '+uk(p.exit_at)+' · modelled result '+money(p.realised_gbp)+
+    ' ('+(Number.isFinite(Number(p.realised_pct))?
+     Number(p.realised_pct).toFixed(2)+'%':'unverified percentage')+
+    ') · '+String(p.exit_reason||'UNKNOWN')+
+    (Number(p.overdue_minutes)>0.1?
+      ' · exit delayed '+Number(p.overdue_minutes).toFixed(1)+' min':''):
+    ' · OPEN (hypothetical only) · scheduled 65-minute exit '+uk(p.due_at)+
+    (Number(p.deferred_count)>0?' · deferred for quote safety '+String(p.deferred_count)+' times':'');
+   item.textContent=String(p.symbol||'UNKNOWN')+' · research £100 · entered '+
+    uk(p.entry_at)+ending+' · no broker orders';
+   shadowBox.append(item);
+  }
+  if(!shadowRows.length){
+   const empty=document.createElement('div');empty.className='locked tiny';
+   empty.textContent='No prospective shadow positions yet. Historical Council reviews are not converted into invented fills.';
+   shadowBox.append(empty);
+  }
+  if(shadowSkipped.length){
+   const item=document.createElement('div');item.className='tiny';
+   item.textContent='Recent opportunities not simulated: '+shadowSkipped.slice(0,3)
+    .map(x=>String(x.symbol||'?')+' — '+String(x.explanation||x.outcome||'UNVERIFIED')
+    .replaceAll('_',' ')).join(' · ');
+   shadowBox.append(item);
+  }
+  const exitDiags=Array.isArray(payload.virtual_exit_diagnostics)?
+   payload.virtual_exit_diagnostics:[];
+  el('virtualExitTiming').textContent=exitDiags.length?
+   '65-minute virtual-exit diagnostics: latest '+uk(exitDiags[0].event_at)+
+   ' · '+String(exitDiags[0].check_type||'UNKNOWN').replaceAll('_',' ')+
+   (exitDiags[0].reason?' · '+String(exitDiags[0].reason).replaceAll('_',' '):'')+
+   '. We record observed timing and quote-quality delays rather than backdating exits.':
+   '65-minute exit diagnostics are active. No missed-deadline event recorded since activation; the earlier 9 November delay cannot be conclusively explained retrospectively.';
   const root=el('virtualPositions');root.replaceChildren();
   for(const p of rows.slice(0,8))root.append(virtualPositionCard(p));
   if(!rows.length)root.textContent='No simulated positions yet. No order has been made.';
@@ -223,6 +276,9 @@ async function refreshVirtualStrategy(){
   el('virtualEquity').textContent='—';el('virtualCash').textContent='—';el('virtualOpen').textContent='—';
   el('virtualMessage').textContent='A verified authorised owner session is required. No virtual results are inferred.';
   el('virtualCouncil').textContent='Council not accessible until owner sign-in.';
+  el('virtualShadowSummary').textContent='Owner sign-in required to view independent shadow results.';
+  el('virtualShadowPositions').textContent='No verified shadow data available in this session.';
+  el('virtualExitTiming').textContent='Exit timing diagnostics unavailable until owner sign-in.';
   el('virtualPositions').textContent='No authenticated virtual transactions available.';
  }finally{virtualLoading=false;el('virtualRefresh').disabled=false}
 }
